@@ -1,4 +1,3 @@
-
 import cPickle
 import csv
 import sys
