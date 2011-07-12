@@ -7,6 +7,14 @@ from interactive import dump_to_csv
 from cftc import CFTCDocument
 
 
+
+def load_hierarchy(path):
+    return [[], 
+            [["A sample doc", "Another sample doc"]], 
+            [["A sample doc", "Another sample doc"], ["Some unrelated stuff.", "More unrelated stuff.", "And a third unrelated thing."]]]
+
+
+
 def singleton_count(cluster_map):
     c = 0
     for value in cluster_map.values:
