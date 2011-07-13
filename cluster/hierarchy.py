@@ -1,4 +1,5 @@
 from cftc import CFTCDocument
+from clustering import Clustering
 from interactive import dump_to_csv
 import cPickle
 import csv

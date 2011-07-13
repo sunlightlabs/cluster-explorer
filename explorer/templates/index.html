@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extrajs %}
+	<script type="text/javascript" href="{% get_static_prefix %}/js/fd-slider.js">
+		Modernizr.load([
+		{
+			test 		: Modernizr.inputtypes.range,
+			nope		: [	'css!{% get_static_prefix %}/css/fd-slider.css',
+						'{% get_static_prefix %}/js/libs/fd-slider.min.js' ],
+			callback	: function(id, testResult) {
+				if("fdSlider" in window && typeof (fdSlider.onDomReady) != "undefined") {
+					try { fdSlider.onDomReady(); } catch(err) {};
+					$(function(){
+						$("#slider").change(function() {
+							console.log($(this).val())
+							$.post(
+								'/j',
+								{step: $(this).val()},
+								function(data) {
+									$('#main').html(data)
+								}
+							)
+						});
+					})
+				};
+			}		
+		}
+		])
+	</script>
+{% endblock %}
+{% block main %}
+	Step <span id="currentStep">{{ params.step }}</span> of {{ count.steps }}, containing <span id="currentCLusters">{{ count.clusters }}</span> clusters <br /> 
+	{% for cluster in all_docs %}
+		{{ cluster|length }}<br />
+	{% endfor %}
+	<input id="slider" type="range" step="1" min="0" max="{{count.steps}}">
+{% endblock %}
