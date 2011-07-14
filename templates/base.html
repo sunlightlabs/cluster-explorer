@@ -20,7 +20,7 @@
 	{% block extrastyle %}{% endblock %}
 
 	<script src="{% get_static_prefix %}js/libs/modernizr.custom.js"></script>
-	{% block extrajs %}{% endblock %}
+	{% block extrajshead %}{% endblock %}
 </head>
 <body>
 	<div id="container">
@@ -39,8 +39,48 @@
 
 	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
 	<script>!window.jQuery && document.write(unescape('%3Cscript src="js/libs/jquery-1.5.1.min.js"%3E%3C/script%3E'))</script>
-	<script src="js/plugins.js"></script>
-	<script src="js/script.js"></script>
+	<script src="{% get_static_prefix %}js/plugins.js"></script>
+	<script src="{% get_static_prefix %}js/script.js"></script>
+	<script type="text/javascript" href="{% get_static_prefix %}/js/fd-slider.js">
+		Modernizr.load([
+		{
+			test 		: Modernizr.inputtypes.range,
+			nope		: [	'css!{% get_static_prefix %}/css/fd-slider.css',
+							'{% get_static_prefix %}/js/libs/fd-slider.min.js' ],
+			callback	: function(id, testResult) {
+				if("fdSlider" in window && typeof (fdSlider.onDomReady) != "undefined") {
+					try { fdSlider.onDomReady(); } catch(err) {};
+				};
+			}		
+		}
+		]);
+		$(function(){
+			$("#slider, #fd-slider-slider, #fd-slider-handle").mouseup(function() {
+					$("#loader").show();
+					$.get(
+						'/j',
+						{step: $(this).val()},
+						function(data) {
+							$('#cluster_info').html(data);
+							$('#loader').show();
+						}
+					)
+			});
+			$("#cluster_info ul>li").live('click', function() {
+				$(this).clone().appendTo("#cluster_overlay #overlay_inner");
+				$("#cluster_overlay").show().animate({
+					width				: "80%",
+					height				: "80%",
+					left 				: "10%",
+					top 				: "10%",  
+				});
+			});
+			$("#cluster_overlay #close").click( function() {
+				$("#cluster_overlay #overlay_inner li").remove();
+				$("#cluster_overlay").attr('style','')
+			});
+		})
+	</script>
 	<!--[if lt IE 7 ]>
 	<script src="js/libs/dd_belatedpng.js"></script>
 	<script> DD_belatedPNG.fix('img, .png_bg');</script>

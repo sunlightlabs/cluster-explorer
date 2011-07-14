@@ -85,8 +85,72 @@ a:hover { color: #036; }
    ||                                              ||
     \\ ========================================== //
 */
-
-
+#cluster_info ul>li {
+    display:inline-block;
+    width:220px;
+    height:220px;
+}
+#cluster_info ul ul {
+    position:relative;
+    display:inline-block;
+    width:180px;
+    height:180px;
+}
+#cluster_info ul ul li {
+    margin:0;
+    background: url(../img/blank_doc.png) no-repeat 10px 10px;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 148px;
+    height: 148px;
+    padding: 40px;
+    font-size: 60%;
+    overflow:hidden;
+    list-style-type:none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius:10px;
+    -moz-border-radius:10px;
+    -webkit-border-radius:10px;
+}
+#cluster_info ul ul li:hover {
+    background-color:#3cf;
+    cursor:pointer;
+}
+#cluster_overlay {
+    display:none;
+    position:fixed;
+    border-radius:10px;
+    -moz-border-radius:10px;
+    -webkit-border-radius:10px;
+    width:0;
+    height:0;
+    background:rgba(51,51,51,0.9);
+    -moz-box-sizing:border-box;
+    -webkit-box-sizing:border-box;
+    box-sizing:border-box;
+    padding:20px;
+    color:#FFF;
+}
+    #cluster_overlay #close {
+        position:absolute;
+        color:white;
+        font-weight:bold;
+        top:0;
+        right:0;
+        display:inline-block;
+        cursor:pointer;
+    }
+    #cluster_overlay #overlay_inner {
+        position:relative;
+        overflow-y:auto;
+        height:100%;
+    }
+#slider, #fd-slider-slider {
+    width:100%;
+}
 
 .ir { display: block; text-indent: -999em; overflow: hidden; background-repeat: no-repeat; text-align: left; direction: ltr; }
 .hidden { display: none; visibility: hidden; }

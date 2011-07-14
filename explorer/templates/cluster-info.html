@@ -1,7 +1,12 @@
-Step <span id="currentStep">{{ params.step }}</span> of {{ count.steps }}, containing <span id="currentCLusters">{{ count.clusters }}</span> clusters <br /> 
+<h2>Step <span id="currentStep">{{ params.step }}</span> of {{ count.steps }}, containing <span id="currentCLusters">{{ count.clusters }}</span> clusters</h2> 
 <ul>
 {% for cluster in all_docs %}
-	<li>{{ forloop.counter }}: {{ cluster|length }}<br /> documents </li>
+	<li><h3>{{ forloop.counter }}: {{ cluster|length }} documents</h3>
+		<ul>
+		{% for doc in cluster|slice:"0:10" %}
+			<li>{{ doc|truncatewords:20 }}</li>
+		{% endfor %}
+		</ul>
+	</li>
 {% endfor %}
 </ul>
-<input id="slider" type="range" step="1" min="0" max="{{count.steps}}">

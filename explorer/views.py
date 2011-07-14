@@ -34,7 +34,7 @@ def index(request, step = 0, cluster = 0, doc = 0):
     )
 
 def ajax(request): #ditch this for checking headers in the method above (HATEOAS!)
-    response_dict = get_clusters(request.POST['step'],0,0) #don't hardcode
+    response_dict = get_clusters(int(request.GET['step']),0,0) #don't hardcode
     return render_to_response(
         "cluster-info.html", #DRY this up at some point, do client-side templating, or something else
         response_dict
