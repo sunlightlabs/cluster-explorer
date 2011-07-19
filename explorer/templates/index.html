@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
-{% block extrajshead %}
-{% endblock %}
+
 {% block main %}
-	<input id="slider" type="range" step="1" min="0" max="{{count.steps}}" class="slider" value="0">
+	<input id="slider" type="range" step="1" min="0" max="{{count.steps}}" class="slider" value="{{params.step}}">
 	<div id="cluster_info">
 		Step <span id="currentStep">{{ params.step }}</span> of {{ count.steps }}, containing <span id="currentCLusters">{{ count.clusters }}</span> clusters <br /> 
 		<ul>

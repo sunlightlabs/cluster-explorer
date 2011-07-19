@@ -56,4 +56,3 @@ if __name__ == '__main__':
     
     print "\n Writing result of %d steps..." % i    
     cPickle.dump((clustering, docs, clusterings), open(out_file, 'wb'), cPickle.HIGHEST_PROTOCOL)
-    
