@@ -16,8 +16,14 @@ class IndirectList(object):
         return len(self.indexes)
     
     def __getitem__(self, i):
-        return self.values[self.indexes[i]]
-    
+        if isinstance(i, int):
+            return self.values[self.indexes[i]]
+        if isinstance(i, slice):
+            return IndirectList(self.indexes.__getitem__(i), self.values)
+        
+        raise TypeError, "__getitem__ expects either int or slice, not %s" % type(i)
+        
+        
     def __iter__(self):
         for i in xrange(len(self)):
             yield self[i]
