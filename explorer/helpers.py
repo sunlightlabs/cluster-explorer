@@ -1,7 +1,7 @@
 def doc_to_dict(doc_set, doc_limit = 0, doc_truncate = 0):
     return_list = []
     if doc_limit > 0:
-        doc_set = doc_set#[:int(doc_limit)]
+        doc_set = doc_set[:int(doc_limit)]
 
     for doc in doc_set:
         if doc_truncate > 0:

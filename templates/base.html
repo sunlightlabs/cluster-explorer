@@ -65,6 +65,7 @@
 		}
 		]);
 		$(function(){
+			var template = _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}");
 			$("#slider").change(function() {
 				var val = $(this).val();
 				clearTimeout(window.pushstate);
@@ -78,8 +79,8 @@
 					'/j',
 					{step: data[1]},
 					function(data) {
-						//$('#cluster_info').html(data);
-						//$('#loader').show();
+						$('#cluster_info').html(template({c : data}));
+						$('#loader').show();
 						console.log(data)
 					}
 				)
@@ -108,7 +109,7 @@
 					document.getElementById('slider').stepDown()
 					window.History.pushState(null,null,"/"+$("#slider").val())
 				}
-			})
+			});
 		});
 	</script>
 	<!--[if lt IE 7 ]>
