@@ -2,15 +2,15 @@
 {% load static %}
 
 {% block main %}
-	<input id="slider" type="range" step="1" min="0" max="{{count.steps}}" class="slider" value="{{params.step}}">
+	<input id="slider" type="range" step="1" min="1" max="{{count.steps}}" class="slider" value="{{params.step}}">
 	<div id="cluster_info">
-		Step <span id="currentStep">{{ params.step }}</span> of {{ count.steps }}, containing <span id="currentCLusters">{{ count.clusters }}</span> clusters <br /> 
+		<h2>Step <span id="currentStep">{{ params.step }}</span> of {{ count.steps }}, containing <span id="currentCLusters">{{ count.clusters }}</span> clusters</h2> 
 		<ul>
 		{% for cluster in all_docs %}
-			<li><h3>{{ forloop.counter }}: {{ cluster|length }} documents</h3>
+			<li data-cluster="{{ forloop.counter0 }}"><h3>{{ forloop.counter }}: {{ cluster|length }} documents</h3>
 				<ul>
-				{% for doc in cluster|slice:":10" %}
-					<li>{{ doc|truncatewords:20 }}</li>
+				{% for doc in cluster.docs %}
+					<li>{{ doc.text|truncatewords:20 }}</li>
 				{% endfor %}
 				</ul>
 			</li>
@@ -21,4 +21,5 @@
 		<div id="close">Close</div>
 		<div id="overlay_inner"></div>
 	</div>
+	<div id="loader"></div>
 {% endblock %}

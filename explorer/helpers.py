@@ -1,5 +1,8 @@
 def doc_to_dict(doc_set, doc_limit = 0, doc_truncate = 0):
-    return_list = []
+    return_dict = {
+        "count": len(doc_set),
+        "docs" : []
+    }
     if doc_limit > 0:
         doc_set = doc_set[:int(doc_limit)]
 
@@ -14,5 +17,5 @@ def doc_to_dict(doc_set, doc_limit = 0, doc_truncate = 0):
             "org"     : doc.org,
             "text"    : text
         }
-        return_list.append(to_dict)
-    return return_list
+        return_dict['docs'].append(to_dict)
+    return return_dict

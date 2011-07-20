@@ -36,9 +36,8 @@
 			{% block footer %}{% endblock %}
 		</footer>
 	</div>
-
 	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
-	<script>!window.jQuery && document.write(unescape('%3Cscript src="js/libs/jquery-1.5.1.min.js"%3E%3C/script%3E'))</script>
+	<script>!window.jQuery && document.write(unescape('%3Cscript src="{% get_static_prefix %}js/libs/jquery-1.5.1.min.js"%3E%3C/script%3E'))</script>
 	<script src="{% get_static_prefix %}js/libs/underscore-min.js"></script>
 	<script src="{% get_static_prefix %}js/plugins.js"></script>
 	<script src="{% get_static_prefix %}js/script.js"></script>
@@ -66,38 +65,42 @@
 		]);
 		$(function(){
 			var template = _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}");
-			$("#slider").change(function() {
+			
+			$("#slider").change(function(event) {
 				var val = $(this).val();
+				$('#loader').html("step "+val).fadeIn('fast');
 				clearTimeout(window.pushstate);
-				window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val())",500);
+				window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val())",400);
 			});
+			
 			$(window).bind("statechange", function(){
 				State = window.History.getState();
-				//Eventually this will detect what we're trying to get at all levels, for now just the cluster
-				data = State.hash.split("/");
 				$.get(
-					'/j',
-					{step: data[1]},
-					function(data) {
+					State.hash, //The backend will figure out what we want based on the URL
+					function(data) { //but it gets trickier here.
 						$('#cluster_info').html(template({c : data}));
-						$('#loader').show();
-						console.log(data)
+						$('#loader').delay(500).fadeOut('fast');
 					}
 				)
 			});
+			
 			$("#cluster_info ul>li").live('click', function() {
-				docs = $(this).clone()
+				data = $(this).attr("data-cluster");
 				$("#cluster_overlay").show().animate({
 					width				: "80%",
 					height				: "80%",
 					left 				: "10%",
 					top 				: "10%",  
-				}, function() { docs.appendTo("#cluster_overlay #overlay_inner"); });
+				}, function() { 
+						window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val()+'/'+data)",400);
+				});
 			});
+			
 			$("#cluster_overlay #close").click( function() {
 				$("#cluster_overlay #overlay_inner li").remove();
 				$("#cluster_overlay").attr('style','')
 			});
+			
 			$(window).keydown(function(e) {
 				if (e.keyCode == 39) {
 					//right

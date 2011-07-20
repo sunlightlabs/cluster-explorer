@@ -1,9 +1,16 @@
-<h2>Step <span id="currentStep"><%= c.params.step %></span> of <%= c.count.steps %>, containing <span id="currentClusters"><%= c.count.clusters %></span> clusters</h2> 
+<%
+	var docs	= c.all_docs;
+	var params 	= c.params;
+	var count	= c.count;
+%>
+<h2>Step <span id="currentStep"><%= params.step-1 %></span> of <%= count.steps %>, containing <span id="currentClusters"><%= count.clusters %></span> clusters</h2> 
 <ul>
-<% for(var i = 0; i < c.all_docs.length; i++) { %>
-	<li><h3><%= i %>: <%= c.all_docs.length %> documents</h3>
+<% for(var i = 0; i < docs.length; i++) { %>
+	<li data-cluster="<%= i %>"><h3><%= i+1 %>: <%= docs[i].count %> documents</h3>
 		<ul>
-			<li>Fix this in a minute</li>
+			<% for(var x = 0; x < docs[i].docs.length; x++) { %>
+				<li><%= docs[i].docs[x].text %></li>
+			<% } %>
 		</ul>
 	</li>
 <% } %>
