@@ -30,12 +30,13 @@ def _get_step(step = 0, cluster = 0):
         "step"      : int(step)+1,
         "cluster"   : cluster,
     }
-    doc_preview = [doc_to_dict(i,1,140) for i in all_docs[int(step)]]
-    return { "all_docs" : doc_preview, "count" : count, "params" : params }
+    doc_preview = [doc_to_dict(i,1,20) for i in all_docs[int(step)]]
+    return { "step" : doc_preview, "count" : count, "params" : params }
 
 def _get_cluster(step = 0, cluster = 0):
-    doc_preview = doc_to_dict(all_docs[int(step)][int(cluster)])
-    return { "docs" : doc_preview }
+    return_dict = doc_to_dict(all_docs[int(step)][int(cluster)],10,20)
+    return_dict['id'] = cluster
+    return { "cluster" : return_dict }
 
 def _get_doc():
     pass

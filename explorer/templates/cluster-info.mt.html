@@ -1,17 +1,15 @@
 <%
-	var docs	= c.all_docs;
-	var params 	= c.params;
-	var count	= c.count;
+	var docs 	= cluster.docs;
+	var count	= cluster.count;
+	var id		= cluster.id;
 %>
-<h2>Step <span id="currentStep"><%= params.step-1 %></span> of <%= count.steps %>, containing <span id="currentClusters"><%= count.clusters %></span> clusters</h2> 
+<h3>Cluster <%= cluster.id %>, containing <%= count %> documents</h3>
 <ul>
-<% for(var i = 0; i < docs.length; i++) { %>
-	<li data-cluster="<%= i %>"><h3><%= i+1 %>: <%= docs[i].count %> documents</h3>
-		<ul>
-			<% for(var x = 0; x < docs[i].docs.length; x++) { %>
-				<li><%= docs[i].docs[x].text %></li>
-			<% } %>
-		</ul>
+<% for (var i = 0; i < docs.length; i++) { %>
+	<li>
+		<p><%= docs[i].text %></p>
+		<cite><%= docs[i].name %>, <%= docs[i].org %></cite>
 	</li>
 <% } %>
 </ul>
+<a href="#">Read More</a>

@@ -1,3 +1,5 @@
+from django.template.defaultfilters import truncatewords
+
 def doc_to_dict(doc_set, doc_limit = 0, doc_truncate = 0):
     return_dict = {
         "count": len(doc_set),
@@ -8,7 +10,7 @@ def doc_to_dict(doc_set, doc_limit = 0, doc_truncate = 0):
 
     for doc in doc_set:
         if doc_truncate > 0:
-            text = doc.text[:int(doc_truncate)]
+            text = truncatewords(doc.text,int(doc_truncate))
         else:
             text = doc.text
         to_dict = {

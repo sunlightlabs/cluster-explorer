@@ -64,7 +64,11 @@
 		}
 		]);
 		$(function(){
-			var template = _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}");
+			
+			var templates = {
+				step 	: _.template("{% filter escapejs %}{% spaceless %}{% include "step-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
+				cluster : _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}")
+			}
 			
 			$("#slider").change(function(event) {
 				var val = $(this).val();
@@ -78,8 +82,14 @@
 				$.get(
 					State.hash, //The backend will figure out what we want based on the URL
 					function(data) { //but it gets trickier here.
-						$('#cluster_info').html(template({c : data}));
-						$('#loader').delay(500).fadeOut('fast');
+						if(data.step) {
+							$('#cluster_info').html(templates.step({c : data}));
+							$('#loader').delay(500).fadeOut('fast');
+						} else
+						if (data.cluster) {
+							$("#cluster_overlay #overlay_inner").html(templates.cluster({cluster: data.cluster}));
+							console.log(data);
+						}
 					}
 				)
 			});
