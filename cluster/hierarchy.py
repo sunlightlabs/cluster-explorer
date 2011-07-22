@@ -47,7 +47,7 @@ if __name__ == '__main__':
     i = 0
     while True:
         (x, y) = clustering.min_link()
-        if x is None or y is None or i > 20:
+        if x is None or y is None:
             break
         
         clustering.merge(x, y)
