@@ -8,8 +8,12 @@ class ViewTest(TestCase):
     
     def test_get_step(self):
         response = _get_step()
-        self.assertNotEqual(response['all_docs'], False)
+        self.assertNotEqual(response['step'], False)
     
     def test_get_cluster(self):
         response = _get_cluster(0,0)
-        self.assertNotEqual(response['docs'], False)
+        self.assertNotEqual(response['cluster'], False)
+    
+    def test_get_doc(self):
+        response = _get_cluster(0,0)
+        self.assertNotEqual(response['doc'], False)

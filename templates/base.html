@@ -42,73 +42,58 @@
 	<script src="{% get_static_prefix %}js/plugins.js"></script>
 	<script src="{% get_static_prefix %}js/script.js"></script>
 	<script type="text/javascript">
+		//html5 shims and polyfills
 		Modernizr.load([
-		{
-			test 		: Modernizr.inputtypes.range,
-			nope		: [	'css!{% get_static_prefix %}/css/fd-slider.css',
-							'{% get_static_prefix %}/js/libs/fd-slider.min.js' ],
-			callback	: function(id, testResult) {
-				if("fdSlider" in window && typeof (fdSlider.onDomReady) != "undefined") {
-					try { fdSlider.onDomReady(); } catch(err) {};
-				};
-			}		
-		},
-		{
-			test		: window.JSON,
-			nope		: '{% get_static_prefix %}/js/libs/history/json2.js'
-		},
-		{
-			test		: Modernizr.history,
-			nope		: [	'{% get_static_prefix %}/js/libs/history/history.html4.js' ],
-			both		: [ '{% get_static_prefix %}/js/libs/history/history.adapter.jquery.js', '{% get_static_prefix %}/js/libs/history/history.js' ]
-		}
+			{
+				test 		: Modernizr.inputtypes.range,
+				nope		: [	'css!{% get_static_prefix %}/css/fd-slider.css',
+								'{% get_static_prefix %}/js/libs/fd-slider.min.js' ],
+				callback	: function(id, testResult) {
+					if("fdSlider" in window && typeof (fdSlider.onDomReady) != "undefined") {
+						try { fdSlider.onDomReady(); } catch(err) {};
+					};
+				}		
+			},
+			{
+				test		: window.JSON,
+				nope		: '{% get_static_prefix %}/js/libs/history/json2.js'
+			},
+			{
+				test		: Modernizr.history,
+				nope		: [	'{% get_static_prefix %}/js/libs/history/history.html4.js' ],
+				both		: [ '{% get_static_prefix %}/js/libs/history/history.adapter.jquery.js', '{% get_static_prefix %}/js/libs/history/history.js' ]
+			}
 		]);
+		
+		//all the jQuery
 		$(function(){
 			
 			var templates = {
 				step 	: _.template("{% filter escapejs %}{% spaceless %}{% include "step-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
-				cluster : _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}")
+				cluster : _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
+				doc     : _.template("{% filter escapejs %}{% spaceless %}{% include "doc.mt.html" %}{%  endspaceless %}{% endfilter %}")
 			}
-			
-			$("#slider").change(function(event) {
-				var val = $(this).val();
-				$('#loader').html("step "+val).fadeIn('fast');
-				clearTimeout(window.pushstate);
-				window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val())",400);
-			});
 			
 			$(window).bind("statechange", function(){
 				State = window.History.getState();
+				console.log(State)
 				$.get(
-					State.hash, //The backend will figure out what we want based on the URL
-					function(data) { //but it gets trickier here.
+					'/api'+State.hash, //The backend will figure out what we want based on the URL
+					State.data,
+					function(data) {
 						if(data.step) {
 							$('#cluster_info').html(templates.step({c : data}));
 							$('#loader').delay(500).fadeOut('fast');
 						} else
 						if (data.cluster) {
 							$("#cluster_overlay #overlay_inner").html(templates.cluster({cluster: data.cluster}));
-							console.log(data);
+						} else
+						if ( data.doc) {
+						    console.log(data)
+							$('#'+State.data.id).html(templates.doc({ doc: data.doc }) )
 						}
 					}
 				)
-			});
-			
-			$("#cluster_info ul>li").live('click', function() {
-				data = $(this).attr("data-cluster");
-				$("#cluster_overlay").show().animate({
-					width				: "80%",
-					height				: "80%",
-					left 				: "10%",
-					top 				: "10%",  
-				}, function() { 
-						window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val()+'/'+data)",400);
-				});
-			});
-			
-			$("#cluster_overlay #close").click( function() {
-				$("#cluster_overlay #overlay_inner li").remove();
-				$("#cluster_overlay").attr('style','')
 			});
 			
 			$(window).keydown(function(e) {
@@ -123,6 +108,42 @@
 					window.History.pushState(null,null,"/"+$("#slider").val())
 				}
 			});
+			
+			$("#slider").change(function(event) {
+				var val = $(this).val();
+				$('#loader').html("step "+val).fadeIn('fast');
+				clearTimeout(window.pushstate);
+				window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val())",400);
+			});
+			
+			$("#cluster_info ul>li").live('click', function(event) {
+				data = $(this).attr("data-cluster");
+				$("#cluster_overlay").css({left:event.pageX, top:event.pageY}).show().animate({
+					position			: "fixed",
+					width				: "80%",
+					height				: "80%",
+					left 				: "10%",
+					top 				: "10%",  
+				}, function() { 
+					window.History.pushState({limit:10},null,'/'+$('#slider').val()+'/'+data);
+					if($("#doc-list").attr('data-cluster-total') > 10) {
+					    $("#readmore").show().click(function(event) {
+						    event.preventDefault();
+						    window.History.pushState(null,null,$(this).attr('href'));
+						})
+					}
+				});
+				
+				$("#cluster_overlay #close").click( function() {
+					$("#cluster_overlay #overlay_inner").empty();
+					$("#cluster_overlay").attr('style','')
+				});
+			    $(".doc-link").live('click', function(event) {
+			        event.preventDefault();
+			        window.History.pushState({id : $(this).parent().attr('id') }, null, $(this).attr('href') )
+			    })
+			});
+
 		});
 	</script>
 	<!--[if lt IE 7 ]>

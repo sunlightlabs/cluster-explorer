@@ -1,15 +1,15 @@
 <%
-	var step	= c.step;
-	var params 	= c.params;
-	var count	= c.count;
+	var clusters	= c.step.clusters;
+	var params 		= c.step.params;
+	var count		= c.step.count;
 %>
 <h2>Step <span id="currentStep"><%= params.step-1 %></span> of <%= count.steps %>, containing <span id="currentClusters"><%= count.clusters %></span> clusters</h2> 
 <ul>
-<% for(var i = 0; i < step.length; i++) { %>
-	<li data-cluster="<%= i %>"><h3><%= i+1 %>: <%= step[i].count %> documents</h3>
+<% for(var i = 0; i < clusters.length; i++) { %>
+	<li data-cluster="<%= i %>"><h3><%= i+1 %>: <%= clusters[i].count %> documents</h3>
 		<ul>
-			<% for(var x = 0; x < step[i].docs.length; x++) { %>
-				<li><%= step[i].docs[x].text %></li>
+			<% for(var x = 0; x < clusters[i].docs.length; x++) { %>
+				<li><%= clusters[i].docs[x].text %></li>
 			<% } %>
 		</ul>
 	</li>

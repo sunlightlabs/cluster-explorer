@@ -2,14 +2,15 @@
 	var docs 	= cluster.docs;
 	var count	= cluster.count;
 	var id		= cluster.id;
+	var State   = window.History.getState();
 %>
 <h3>Cluster <%= cluster.id %>, containing <%= count %> documents</h3>
-<ul>
+<ul id="doc-list" data-cluster-total="<%= count %>">
 <% for (var i = 0; i < docs.length; i++) { %>
-	<li>
-		<p><%= docs[i].text %></p>
+	<li id="doc-<%= i %>">
+		<a class="doc-link" href="<%= State.cleanUrl+'/'+i %>"><%= docs[i].text %></a><br />
 		<cite><%= docs[i].name %>, <%= docs[i].org %></cite>
 	</li>
 <% } %>
 </ul>
-<a href="#">Read More</a>
+<a id="readmore" href="<%= State.cleanUrl %>">Read More</a>
