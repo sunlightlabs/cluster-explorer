@@ -1,9 +1,10 @@
-from cftc import CFTCDocument
-from clustering import Clustering
-from interactive import dump_to_csv
 import cPickle
 import csv
 import sys
+
+from cluster.cftc import CFTCDocument
+from cluster.clustering import Clustering
+from cluster.interactive import dump_to_csv
 
 
 class IndirectList(object):
@@ -30,7 +31,7 @@ class IndirectList(object):
 
 
 def load_hierarchy(path):
-    (clustering, docs, steps) = cPickle.load(open(path, 'rb'))
+    (docs, steps) = cPickle.load(open(path, 'rb'))
     
     return [[IndirectList(cluster, docs) for cluster in clustering] for clustering in steps]
     
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     i = 0
     while True:
         (x, y) = clustering.min_link()
-        if x is None or y is None:
+        if x is None or y is None or i > 20:
             break
         
         clustering.merge(x, y)
@@ -58,7 +59,8 @@ if __name__ == '__main__':
         #dump_to_csv(clustering, docs, "%s.%d.csv" % (out_file, i))
         
         sys.stdout.write('.')
+        sys.stdout.flush()
         i += 1
     
     print "\n Writing result of %d steps..." % i    
-    cPickle.dump((clustering, docs, clusterings), open(out_file, 'wb'), cPickle.HIGHEST_PROTOCOL)
+    cPickle.dump((docs, clusterings), open(out_file, 'wb'), cPickle.HIGHEST_PROTOCOL)
