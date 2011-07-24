@@ -3,42 +3,53 @@ package main
 
 import (
     "io"
+    "fmt"
     "math"
     "encoding/binary"
 )
 
-type SymmetricMatrix interface {
+type TriangleMatrix interface {
     Value(i, j int) float32
     SetValue(i, j int, v float32)
     Size() int
 }
 
 
-type inlineSymmetricMatrix []float32
+type inlineTriangleMatrix []float32
 
 
-func NewSymmetricMatrix(size int) SymmetricMatrix {
-    return inlineSymmetricMatrix(make([]float32, size*(size+1)/2))
+func NewTriangleMatrix(size int) TriangleMatrix {
+    if size < 1 {
+        panic(fmt.Sprintf("TriangleMatrix size must be greater than 0: %d", size))
+    }
+    return inlineTriangleMatrix(make([]float32, size*(size-1)/2))
 }
 
-func ReadSymmetricMatrix(r io.Reader) SymmetricMatrix {
+func ReadTriangleMatrix(r io.Reader) TriangleMatrix {
     var size int
     binary.Read(r, binary.LittleEndian, &size)
 
-    var values = make([]float32, size*(size+1)/2)
+    var values = make([]float32, size*(size-1)/2)
     binary.Read(r, binary.LittleEndian, values)
 
-    return inlineSymmetricMatrix(values)
+    return inlineTriangleMatrix(values)
 }
 
-func (m inlineSymmetricMatrix) Value(i, j int) float32 {
-    return m[i*(i+1)/2 + j]
+func convert(i, j int) int {
+    if i <= j {
+        panic(fmt.Sprintf("First argument to TriangleMatrix must be larger than second argument: %d, %d", i, j))
+    }
+    return i*(i-1)/2 + j
 }
 
-func (m inlineSymmetricMatrix) SetValue(i, j int, v float32) {
-    m[i*(i+1)/2 + j] = v
+func (m inlineTriangleMatrix) Value(i, j int) float32 {
+    return m[convert(i, j)]
 }
 
-func (m inlineSymmetricMatrix) Size() int {
-    return int(math.Sqrt(float64(2 * len(m))))
+func (m inlineTriangleMatrix) SetValue(i, j int, v float32) {
+    m[convert(i, j)] = v
+}
+
+func (m inlineTriangleMatrix) Size() int {
+    return int(math.Sqrt(float64(2 * len(m)))) + 1
 }
