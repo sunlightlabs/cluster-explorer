@@ -4,3 +4,7 @@
 db
 db/*
 watcher.rb
+*.a
+*.6
+*.out
+_*
