@@ -1,12 +1,13 @@
-var w = 960,
-    h = 500,
+var w = 1140,
+    h = 600,
     color = d3.scale.category20c();
 
 var treemap = d3.layout.treemap()
    .size([w, h])
    .sticky(false)
    .children(function(d) { return d.clusters; })
-   .value(function(d) { return d.count; });
+   .value(function(d) { return d.count; })
+   .round(true);
 
 var div = d3.select("#chart").append("div")
    .style("position", "relative")
@@ -14,36 +15,28 @@ var div = d3.select("#chart").append("div")
    .style("height", h + "px")
    .style("margin", "0 auto");
 
-function drawIt(someData) {
-    var theThings = div.data([someData]).selectAll("div").data(treemap.nodes)
+function drawIt(someData, hash) {
+    if (hash.substr(-1) != "/") hash = hash+"/";
     
-    console.log(theThings.enter())
-    
-    theThings.enter().append("div")
-        .attr("class", "cell")
+    var theThings = div.data([someData]).selectAll("div").data(treemap.nodes);
+    //Update
+    theThings
+        .html(function(d, i) { return d.children ? null : "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a>"; })
+        .transition().duration(1500)
+            .call(cell)
+    //Enter
+    theThings.enter()
+        .append("div").attr("class","cell")
         .style("background", function(d) { return d.count ? color(d.count) : null; })
-        .call(cell)
-        .text(function(d) { return d.children ? null : d.count; })
+        .html(function(d, i) { return d.children ? null : "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a>"; })
+        .transition().duration(1500)
+            .call(cell)
     
-    theThings.exit().remove();
-}
-
-function reDrawIt(someData) {
-    
-    var theThings = div.data([someData]).selectAll(".cell").data(treemap.nodes);
-
-    //update
-    theThings.transition().duration(1500).call(cell).text(function(d) { return d.children ? null : d.count; });
-    
-    //enter
-    theThings.enter().append("div").transition().duration(1500)
-        .attr("class", "cell")
-        .style("background", function(d) { return d.count ? color(d.count) : null; })
-        .call(cell)
-        .text(function(d) { return d.children ? null : d.count; })
-    
-    exit = theThings.exit().transition().duration(1500).style("width",0).remove();
-        
+    //Exit
+    theThings.exit()
+        .transition().duration(1500)
+            .style("width","0px")
+            .remove();
 }
 
 function cell() {
