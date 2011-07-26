@@ -12,7 +12,7 @@ table, caption, tbody, tfoot, thead, tr, th, td,
 article, aside, canvas, details, figcaption, figure,
 footer, header, hgroup, menu, nav, section, summary,
 time, mark, audio, video {
-  margin: 0;
+  margin: 0;s
   padding: 0;
   border: 0;
   font-size: 100%;
@@ -160,6 +160,55 @@ a:hover { color: #036; }
         height:100%;
     }
     #readmore{ display:none; } /*OMG DO NOT GET RID OF THIS RULE NO MATTER WHAT*/
+    #chart div{
+        position:relative;
+    }
+    div.cell {
+        -moz-border-bottom-colors: none;
+        -moz-border-image: none;
+        -moz-border-left-colors: none;
+        -moz-border-right-colors: none;
+        -moz-border-top-colors: none;
+        -moz-font-feature-settings: normal;
+        -moz-font-language-override: normal;
+        -x-system-font: none;
+        border-bottom-color: white;
+        border-bottom-style: solid;
+        border-bottom-width: 1px;
+        border-left-color-ltr-source: physical;
+        border-left-color-rtl-source: physical;
+        border-left-color-value: white;
+        border-left-style-ltr-source: physical;
+        border-left-style-rtl-source: physical;
+        border-left-style-value: solid;
+        border-left-width-ltr-source: physical;
+        border-left-width-rtl-source: physical;
+        border-left-width-value: 1px;
+        border-right-color-ltr-source: physical;
+        border-right-color-rtl-source: physical;
+        border-right-color-value: white;
+        border-right-style-ltr-source: physical;
+        border-right-style-rtl-source: physical;
+        border-right-style-value: solid;
+        border-right-width-ltr-source: physical;
+        border-right-width-rtl-source: physical;
+        border-right-width-value: 1px;
+        border-top-color: white;
+        border-top-style: solid;
+        border-top-width: 1px;
+        font-family: sans-serif;
+        font-size: 10px;
+        font-size-adjust: none;
+        font-stretch: normal;
+        font-style: normal;
+        font-variant: normal;
+        font-weight: normal;
+        line-height: 12px;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        position: absolute!important;
+        text-indent: 2px;
+    }
 #slider, #fd-slider-slider {
     width:100%;
 }
