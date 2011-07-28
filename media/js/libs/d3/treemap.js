@@ -21,7 +21,7 @@ function drawIt(someData, hash) {
     var theThings = div.data([someData]).selectAll("div").data(treemap.nodes);
     //Update
     theThings
-        .html(function(d, i) { return d.children ? null : "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a>"; })
+        .html(function(d, i) { return d.children ? null : "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a><p>"+d.docs[0].text+"</p>"; })
         .transition().duration(1500)
             .call(cell)
     //Enter

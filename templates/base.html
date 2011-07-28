@@ -68,7 +68,9 @@
 				complete	: function(id, testResult) {
 					window.History.Adapter.onDomLoad(function(){
 						var State = window.History.getState();
-						d3.json("/api"+State.hash, function(data) {
+						url = State.hash.split("/");
+						console.log(url);
+						d3.json("/api/"+url[1], function(data) {
 							drawIt(data.step, State.hash);
 						})
 					})
