@@ -159,7 +159,6 @@ a:hover { color: #036; }
         overflow-y:auto;
         height:100%;
     }
-    #readmore{ display:none; } /*OMG DO NOT GET RID OF THIS RULE NO MATTER WHAT*/
     #chart div{
         position:relative;
     }
