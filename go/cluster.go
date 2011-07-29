@@ -2,11 +2,19 @@
 package main
 
 
+import (
+    "container/vector"
+    "sort"
+    "fmt"
+)
+
+
 type assignment []int
 
 type Assignment interface {
     IsSameCluster(i, j int) bool
     Merge(from, to int)
+    ToLists() [][]int
 }
 
 func NewAssignment(size int) Assignment {
@@ -30,6 +38,43 @@ func (assignments assignment) Merge(from, to int) {
 
 func (assignments assignment) IsSameCluster(i, j int) bool {
     return assignments[i] == assignments[j]
+}
+
+type sortableIntList [][]int
+func (s sortableIntList) Len() int { return len(s) }
+func (s sortableIntList) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortableIntList) Less(i, j int) bool { return len(s[i]) < len(s[j]) }
+
+func (assignments assignment) ToLists() [][]int {
+    m := make(map[int] *vector.IntVector)
+    for i, rep := range assignments {
+        v, present := m[rep]
+        if !present {
+            v = new(vector.IntVector)
+            m[rep] = v
+        }
+        v.Push(i)
+        fmt.Printf("Pushing %d to %d\n", i, rep)
+    }
+    
+    // drop singletons
+    for k, v := range m {
+        if len(*v) <= 1 {
+            fmt.Printf("Removing %d", v.At(0))
+        }
+        m[k] = v, len(*v) > 1
+    }
+    
+    result := make([][]int, len(m))
+    i := 0
+    for _, v := range m {
+        result[i] = *v
+        i++
+    }
+    
+    sort.Sort(sortableIntList(result))
+    
+    return result
 }
 
 func MinLink(distances TriangleMatrix, assignments Assignment) (min_i, min_j int, found bool) {

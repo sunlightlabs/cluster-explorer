@@ -4,6 +4,7 @@ TARG=main
 GOFILES=\
 	matrix.go\
 	cluster.go\
-	json.go
+	json.go\
+	sort.go
 
 include $(GOROOT)/src/Make.cmd

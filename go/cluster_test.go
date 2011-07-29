@@ -78,7 +78,8 @@ func TestJSONOutput(t *testing.T) {
     a := NewAssignment(4)
  
     for n := 0; n < 5; n++ {
-        ToJSONFile(a, fmt.Sprintf("test.%d.json", n))
+        ToJSONFile(a, fmt.Sprintf("assignments.%d.json", n))
+        ToJSONFile(a.ToLists(), fmt.Sprintf("clusters.%d.json", n))
         i, j, _ := MinLink(m, a)
         a.Merge(i, j)
     }

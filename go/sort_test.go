@@ -26,3 +26,4 @@ func TestInterfaceSort(t *testing.T) {
     assertEqual(t, "spaz", data[2])
     assertEqual(t, "soaped", data[3])
 }
+
