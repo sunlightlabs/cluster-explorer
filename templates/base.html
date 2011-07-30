@@ -93,6 +93,8 @@
 					step	: function(data, hash) {
 								$('#cluster_info').html(clusterExplore.templates.step({c : data}));
 								$('#loader').delay(500).fadeOut('fast');
+								$("#cluster_overlay #overlay_inner").empty();
+								$("#cluster_overlay").attr('style','').attr('class','');
 								drawIt(data.step, hash);
 							},
 					cluster	: function(data) {
@@ -118,7 +120,7 @@
 			$(window).bind("statechange", function(){
 				var State = window.History.getState();
 				$.get(
-					'/api'+State.hash, //The backend will figure out what we want based on the URL
+					'/api'+State.hash,
 					State.data,
 					function(data) {
 						clusterExplore.ajax.callback(data,State)
@@ -160,35 +162,33 @@
 				}, function() { 
 					window.History.pushState({limit:10},null,url);
 				});
-
-				$("#cluster_overlay #close").click( function() {
-					$("#cluster_overlay #overlay_inner").empty();
-					$("#cluster_overlay").attr('style','')
-				});
-			    $(".doc-link").live('click', 
-					function(event) {
-						event.preventDefault();
-						var info = $(this).siblings('.doc-info')
-						if (info.is(':hidden')) {
-							info.show();
-							console.log('first')
-						} else
-						if (info.is(':visible')) {
-							info.hide();
-							console.log('second')
-						} else {
-							console.log('third')
-			        		window.History.pushState({id : $(this).parent().attr('id') }, null, $(this).attr('href') );
-						}
-					}
-			    )
-				$("#readmore").live('click', 
-					function(event) {
-				    	event.preventDefault();
-				    	window.History.pushState(null,null,$(this).attr('href'));
-					}
-				);
 			});
+			$("#cluster_overlay #close").live('click', function() {
+				$("#cluster_overlay #overlay_inner").empty();
+				$("#cluster_overlay").attr('style','').attr('class','');
+				hash = window.History.getState().hash.split("/")[1];
+				window.History.pushState(null, null, "/"+hash)
+			});
+		    $(".doc-link").live('click', 
+				function(event) {
+					event.preventDefault();
+					var info = $(this).siblings('.doc-info')
+					if (info.is(':hidden')) {
+						info.show();
+					} else
+					if (info.is(':visible')) {
+						info.hide();
+					} else {
+		        		window.History.pushState({id : $(this).parent().attr('id') }, null, $(this).attr('href') );
+					}
+				}
+		    )
+			$("#readmore").live('click', 
+				function(event) {
+			    	event.preventDefault();
+			    	window.History.pushState(null,null,$(this).attr('href'));
+				}
+			);
 
 		});
 	</script>
