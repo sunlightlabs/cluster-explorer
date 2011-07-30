@@ -39,6 +39,9 @@
 	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
 	<script>!window.jQuery && document.write(unescape('%3Cscript src="{% get_static_prefix %}js/libs/jquery-1.5.1.min.js"%3E%3C/script%3E'))</script>
 	<script src="{% get_static_prefix %}js/libs/underscore-min.js"></script>
+	<script src="{% get_static_prefix %}js/libs/d3/d3.js"></script>
+	<script src="{% get_static_prefix %}js/libs/d3/d3.layout.js"></script>
+	<script src="{% get_static_prefix %}js/libs/d3/treemap.js"></script>
 	<script src="{% get_static_prefix %}js/plugins.js"></script>
 	<script src="{% get_static_prefix %}js/script.js"></script>
 	<script type="text/javascript">
@@ -46,8 +49,8 @@
 		Modernizr.load([
 			{
 				test 		: Modernizr.inputtypes.range,
-				nope		: [	'css!{% get_static_prefix %}/css/fd-slider.css',
-								'{% get_static_prefix %}/js/libs/fd-slider.min.js' ],
+				nope		: [	'css!{% get_static_prefix %}css/fd-slider.css',
+								'{% get_static_prefix %}js/libs/fd-slider.min.js' ],
 				callback	: function(id, testResult) {
 					if("fdSlider" in window && typeof (fdSlider.onDomReady) != "undefined") {
 						try { fdSlider.onDomReady(); } catch(err) {};
@@ -56,42 +59,69 @@
 			},
 			{
 				test		: window.JSON,
-				nope		: '{% get_static_prefix %}/js/libs/history/json2.js'
+				nope		: '{% get_static_prefix %}js/libs/history/json2.js'
 			},
 			{
 				test		: Modernizr.history,
-				nope		: [	'{% get_static_prefix %}/js/libs/history/history.html4.js' ],
-				both		: [ '{% get_static_prefix %}/js/libs/history/history.adapter.jquery.js', '{% get_static_prefix %}/js/libs/history/history.js' ]
+				nope		: [	'{% get_static_prefix %}js/libs/history/history.html4.js' ],
+				both		: [ '{% get_static_prefix %}js/libs/history/history.adapter.jquery.js', '{% get_static_prefix %}/js/libs/history/history.js' ],
+				complete	: function(id, testResult) {
+					window.History.Adapter.onDomLoad(function(){
+						var State = window.History.getState();
+						url = State.hash.split("/");
+						console.log(url);
+						d3.json("/api/"+url[1], function(data) {
+							drawIt(data.step, State.hash);
+						})
+					})
+				}
 			}
 		]);
 		
 		//all the jQuery
 		$(function(){
+			var clusterExplore = {
+				ce	: this,
 			
-			var templates = {
-				step 	: _.template("{% filter escapejs %}{% spaceless %}{% include "step-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
-				cluster : _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
-				doc     : _.template("{% filter escapejs %}{% spaceless %}{% include "doc.mt.html" %}{%  endspaceless %}{% endfilter %}")
+				templates : {
+					step 	: _.template("{% filter escapejs %}{% spaceless %}{% include "step-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
+					cluster : _.template("{% filter escapejs %}{% spaceless %}{% include "cluster-info.mt.html" %}{%  endspaceless %}{% endfilter %}"),
+					doc     : _.template("{% filter escapejs %}{% spaceless %}{% include "doc.mt.html" %}{%  endspaceless %}{% endfilter %}")
+				},
+			
+				ajax : {
+					step	: function(data, hash) {
+								$('#cluster_info').html(clusterExplore.templates.step({c : data}));
+								$('#loader').delay(500).fadeOut('fast');
+								drawIt(data.step, hash);
+							},
+					cluster	: function(data) {
+								$("#cluster_overlay #overlay_inner").html(clusterExplore.templates.cluster({cluster: data.cluster}));
+							},
+					doc		: function(data, state) {
+								$('#'+state.data.id+" a").after(clusterExplore.templates.doc({ doc: data.doc }) );
+							},
+					callback: function(data, state) {
+									if(data.step) {
+										this.step(data, state.hash);
+									} else
+									if (data.cluster) {
+										this.cluster(data);
+									} else
+									if ( data.doc) {
+									    this.doc(data, state);
+									}
+								}
+				},
 			}
-			
+			//bind 'em
 			$(window).bind("statechange", function(){
-				State = window.History.getState();
-				console.log(State)
+				var State = window.History.getState();
 				$.get(
 					'/api'+State.hash, //The backend will figure out what we want based on the URL
 					State.data,
 					function(data) {
-						if(data.step) {
-							$('#cluster_info').html(templates.step({c : data}));
-							$('#loader').delay(500).fadeOut('fast');
-						} else
-						if (data.cluster) {
-							$("#cluster_overlay #overlay_inner").html(templates.cluster({cluster: data.cluster}));
-						} else
-						if ( data.doc) {
-						    console.log(data)
-							$('#'+State.data.id).html(templates.doc({ doc: data.doc }) )
-						}
+						clusterExplore.ajax.callback(data,State)
 					}
 				)
 			});
@@ -116,32 +146,48 @@
 				window.pushstate = setTimeout("window.History.pushState(null,null,'/'+$('#slider').val())",400);
 			});
 			
-			$("#cluster_info ul>li").live('click', function(event) {
-				data = $(this).attr("data-cluster");
-				$("#cluster_overlay").css({left:event.pageX, top:event.pageY}).show().animate({
+			$(".cell a").live('click', function(event) {
+				console.log(event)
+				event.preventDefault();
+				var url = $(this).attr('href');
+				$("#cluster_overlay").css({left:event.pageX+"px", top:event.pageY+"px", display:"block"}).delay(50)
+				.animate({
 					position			: "fixed",
 					width				: "80%",
 					height				: "80%",
 					left 				: "10%",
 					top 				: "10%",  
 				}, function() { 
-					window.History.pushState({limit:10},null,'/'+$('#slider').val()+'/'+data);
-					if($("#doc-list").attr('data-cluster-total') > 10) {
-					    $("#readmore").show().click(function(event) {
-						    event.preventDefault();
-						    window.History.pushState(null,null,$(this).attr('href'));
-						})
-					}
+					window.History.pushState({limit:10},null,url);
 				});
-				
+
 				$("#cluster_overlay #close").click( function() {
 					$("#cluster_overlay #overlay_inner").empty();
 					$("#cluster_overlay").attr('style','')
 				});
-			    $(".doc-link").live('click', function(event) {
-			        event.preventDefault();
-			        window.History.pushState({id : $(this).parent().attr('id') }, null, $(this).attr('href') )
-			    })
+			    $(".doc-link").live('click', 
+					function(event) {
+						event.preventDefault();
+						var info = $(this).siblings('.doc-info')
+						if (info.is(':hidden')) {
+							info.show();
+							console.log('first')
+						} else
+						if (info.is(':visible')) {
+							info.hide();
+							console.log('second')
+						} else {
+							console.log('third')
+			        		window.History.pushState({id : $(this).parent().attr('id') }, null, $(this).attr('href') );
+						}
+					}
+			    )
+				$("#readmore").live('click', 
+					function(event) {
+				    	event.preventDefault();
+				    	window.History.pushState(null,null,$(this).attr('href'));
+					}
+				);
 			});
 
 		});

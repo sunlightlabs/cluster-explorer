@@ -5,7 +5,7 @@
 	var State   = window.History.getState();
 %>
 <h3>Cluster <%= cluster.id %>, containing <%= count %> documents</h3>
-<ul id="doc-list" data-cluster-total="<%= count %>">
+<ul id="doc-list" data-cluster-total=<%= count %>>
 <% for (var i = 0; i < docs.length; i++) { %>
 	<li id="doc-<%= i %>">
 		<a class="doc-link" href="<%= State.cleanUrl+'/'+i %>"><%= docs[i].text %></a><br />
@@ -13,4 +13,6 @@
 	</li>
 <% } %>
 </ul>
-<a id="readmore" href="<%= State.cleanUrl %>">Read More</a>
+<% if (count > docs.length) { %>
+	<a id="readmore" href="<%= State.cleanUrl %>">Read More</a>
+<% } %>

@@ -5,18 +5,8 @@
 	<input id="slider" type="range" step="1" min="1" max="{{step.count.steps}}" class="slider" value="{{step.params.step}}">
 	<div id="cluster_info">
 		<h2>Step <span id="currentStep">{{ step.params.step }}</span> of {{ step.count.steps }}, containing <span id="currentCLusters">{{ step.count.clusters }}</span> clusters</h2> 
-		<ul>
-		{% for cluster in step.clusters %}
-			<li data-cluster="{{ forloop.counter0 }}"><h3>{{ forloop.counter }}: {{ cluster|length }} documents</h3>
-				<ul>
-				{% for doc in cluster.docs %}
-					<li>{{ doc.text|truncatewords:20 }}</li>
-				{% endfor %}
-				</ul>
-			</li>
-		{% endfor %}
-		</ul>
 	</div>
+	<div id="chart"></div>
 	<div id="cluster_overlay">
 		<div id="close">Close</div>
 		<div id="overlay_inner"></div>
