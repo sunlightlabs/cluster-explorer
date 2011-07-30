@@ -26,7 +26,7 @@ func NewTriangleMatrix(size int) TriangleMatrix {
 }
 
 func ReadTriangleMatrix(r io.Reader) TriangleMatrix {
-    var size int
+    var size int32
     binary.Read(r, binary.LittleEndian, &size)
 
     var values = make([]float32, size*(size-1)/2)

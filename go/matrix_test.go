@@ -3,6 +3,7 @@ package main
 
 import (
     "testing"
+    "os"
 )
 
 func assertEqual(t *testing.T, a, b interface{}) {
@@ -32,4 +33,18 @@ func TestMatrix(t *testing.T) {
     assertEqual(t, float32(3.0), m4.Value(3, 0))
     assertEqual(t, float32(3.1), m4.Value(3, 1))
     assertEqual(t, float32(3.2), m4.Value(3, 2))
+}
+
+func TestMatrixRead(t *testing.T) {
+    f, _ := os.Open("test_matrix.sim")
+    m := ReadTriangleMatrix(f)
+    
+    assertEqual(t, 4, m.Size())
+    assertEqual(t, float32(1.0), m.Value(1, 0))
+    assertEqual(t, float32(2.0), m.Value(2, 0))
+    assertEqual(t, float32(2.1), m.Value(2, 1))
+    assertEqual(t, float32(3.0), m.Value(3, 0))
+    assertEqual(t, float32(3.1), m.Value(3, 1))
+    assertEqual(t, float32(3.2), m.Value(3, 2))
+    
 }

@@ -22,6 +22,20 @@ test_docs = [
 
 
 
+class TestMatrixWrite(unittest.TestCase):
+    
+    def test_write(self):
+        m = SymmetricMatrix(4)
+        m[1, 0] = 1.0
+        m[2, 0] = 2.0
+        m[2, 1] = 2.1
+        m[3, 0] = 3.0
+        m[3, 1] = 3.1
+        m[3, 2] = 3.2
+        
+        m.write_binary('test_matrix.sim')
+
+
 class TestHeap(unittest.TestCase):
 
     def test_heap(self):

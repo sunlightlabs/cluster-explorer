@@ -5,7 +5,6 @@ package main
 import (
     "container/vector"
     "sort"
-    "fmt"
 )
 
 
@@ -54,14 +53,10 @@ func (assignments assignment) ToLists() [][]int {
             m[rep] = v
         }
         v.Push(i)
-        fmt.Printf("Pushing %d to %d\n", i, rep)
     }
     
     // drop singletons
     for k, v := range m {
-        if len(*v) <= 1 {
-            fmt.Printf("Removing %d", v.At(0))
-        }
         m[k] = v, len(*v) > 1
     }
     
