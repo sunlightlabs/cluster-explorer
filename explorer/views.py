@@ -5,7 +5,7 @@ from cluster.hierarchy import *
 import json
 from helpers import doc_to_dict
 
-all_docs = load_hierarchy(settings.PROJECT_ROOT+"/cftc.1k.complete") #Hierarchy should probably eventually be a model
+all_docs = ClusterHierarchy(settings.PROJECT_ROOT+"/data/cftc.1k/") #Hierarchy should probably eventually be a model
 
 def _get_step(step = 0, cluster = 0):
     count = { # You can probably do this in the template

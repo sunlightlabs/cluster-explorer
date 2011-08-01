@@ -1,6 +1,7 @@
 import cPickle
 import csv
 import sys
+import json
 
 from cluster.cftc import CFTCDocument
 from cluster.clustering import Clustering
@@ -22,19 +23,27 @@ class IndirectList(object):
         if isinstance(i, slice):
             return IndirectList(self.indexes.__getitem__(i), self.values)
         
-        raise TypeError, "__getitem__ expects either int or slice, not %s" % type(i)
-        
+        raise TypeError, "__getitem__ expects either int or slice, not %s" % type(i)        
         
     def __iter__(self):
         for i in xrange(len(self)):
             yield self[i]
 
 
-def load_hierarchy(path):
-    (docs, steps) = cPickle.load(open(path, 'rb'))
+class ClusterHierarchy(object):
     
-    return [[IndirectList(cluster, docs) for cluster in clustering] for clustering in steps]
+    def __init__(self, data_path):
+        self.data_path = data_path
+        self.docs = cPickle.load(open("%s/docs.pickle" % data_path, 'r'))
+        self.num_steps = int(json.load(open("%s/num_steps.json" % data_path, 'r')))
     
+    def __len__(self):
+        return self.num_steps
+        
+    def __getitem__(self, n):
+        clusters = json.load(open("%s/%d.json" % (self.data_path, n), 'r'))
+        return [IndirectList(cluster, self.docs) for cluster in clusters]
+
 
 if __name__ == '__main__':
     in_file = sys.argv[1]
