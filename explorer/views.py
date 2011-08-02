@@ -5,7 +5,7 @@ from cluster.hierarchy import *
 import json
 from helpers import doc_to_dict
 
-all_docs = load_hierarchy(settings.PROJECT_ROOT+"/cftc.1k.complete") #Hierarchy should probably eventually be a model
+all_docs = ClusterHierarchy(settings.DATA_ROOT)
 
 def _get_params(step = None, cluster=None, doc=None):
     if step:

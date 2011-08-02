@@ -31,6 +31,18 @@ class SymmetricMatrix(object):
             return len(self.mask)
         return len(self.values)
 
+    def write_binary(self, filename):
+        import struct
+        
+        outfile = open(filename, 'wb')
+        outfile.write(struct.pack('i', len(self)))
+        for i in range(len(self)):
+            for j in range(i):
+                outfile.write(struct.pack('f', self[i, j]))
+        
+        outfile.close()
+        
+        
 
 class PriorityQueue(object):
     
