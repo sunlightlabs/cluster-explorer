@@ -4,12 +4,34 @@
 {% block main %}
 	<input id="slider" type="range" step="1" min="1" max="{{step.count.steps}}" class="slider" value="{{step.params.step}}">
 	<div id="cluster_info">
-		<h2>Step <span id="currentStep">{{ step.params.step }}</span> of {{ step.count.steps }}, containing <span id="currentCLusters">{{ step.count.clusters }}</span> clusters</h2> 
+		<h2>Step <span id="currentStep">{{ step.params.step }}</span> of {{ step.count.steps }}, containing <span id="currentClusters">{{ step.count.clusters }}</span> clusters</h2> 
 	</div>
 	<div id="chart"></div>
-	<div id="cluster_overlay">
+	<div id="cluster_overlay" {% if cluster %}class="show"{% endif %}>
 		<div id="close">Close</div>
-		<div id="overlay_inner"></div>
+		<div id="overlay_inner">
+			{% if cluster %}
+			<h3>Cluster {{ cluster.id }}, containing {{ count }} documents</h3>
+			<ul id="doc-list" data-cluster-total={{ cluster.count }}>
+			{% for docs in cluster.docs %}
+				<li id="doc-{{ forloop.counter0 }}">
+					<a class="doc-link" href="/{{params.step}}/{{params.cluster}}/{{forloop.counter0}}">{{ docs.text }}</a><br />
+					{% if doc %}{% if params.doc == forloop.counter0 %}
+					{% for d in doc.docs %}
+					<div class="doc-info">
+						<span class="date">{{ d.date }}</span>
+						<p>{{ d.text }}</p>
+					</div>
+					{% endfor %}{% else %}{% endif %}{% else %}{% endif %}
+					<cite>{{ docs.name }}, {{ docs.org }}</cite>
+				</li>
+			{% endfor %}
+			</ul>
+			{% if cluster.count > docs|length %}
+				<a id="readmore" href="#">Read More</a>
+			{% endif %}
+			{% endif %}		
+		</div>
 	</div>
 	<div id="loader"></div>
 {% endblock %}

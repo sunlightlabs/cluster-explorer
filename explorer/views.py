@@ -7,6 +7,15 @@ from helpers import doc_to_dict
 
 all_docs = ClusterHierarchy(settings.PROJECT_ROOT+"/data/cftc.1k/") #Hierarchy should probably eventually be a model
 
+def _get_params(step = None, cluster=None, doc=None):
+    if step:
+        step = int(step)
+    if cluster:
+        cluster = int(cluster)
+    if doc:
+        doc = int(doc)
+    return {'step':step,'cluster':cluster,'doc':doc}
+
 def _get_step(step = 0, cluster = 0):
     count = { # You can probably do this in the template
         "steps"     : len(all_docs),
@@ -27,10 +36,12 @@ def _get_cluster(step = 0, cluster = 0, limit = 0):
 
 def _get_doc(step = 0, cluster = 0, doc = 0):
     return_dict = doc_to_dict( [all_docs[int(step)][int(cluster)][int(doc)]] )
+    return_dict['id'] = doc
     return return_dict
 
 def index(request, step = None, cluster = None, doc = None):
     response_dict = {}
+    response_dict['params']         = _get_params(step,cluster,doc)
     if doc:
         response_dict['doc']        = _get_doc(int(step),int(cluster),int(doc))        
     if cluster:
@@ -48,6 +59,7 @@ def index(request, step = None, cluster = None, doc = None):
 
 def api(request, step = None, cluster = None, doc = None):
     response_dict = {}
+    response_dict['params']         = _get_params(step,cluster,doc)
     if doc:
         response_dict['doc']        = _get_doc(int(step),int(cluster),int(doc))
     elif cluster:

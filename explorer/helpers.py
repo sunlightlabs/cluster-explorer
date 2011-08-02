@@ -8,7 +8,7 @@ def doc_to_dict(doc_set, doc_limit = 0, doc_truncate = 0):
     if doc_limit > 0:
         doc_set = doc_set[:int(doc_limit)]
 
-    for doc in doc_set:
+    for index, doc in enumerate(doc_set):
         if doc_truncate > 0:
             text = truncatewords(doc.text,int(doc_truncate))
         else:
