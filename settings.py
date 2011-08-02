@@ -4,7 +4,7 @@ import sys, os
 PROJECT_ROOT = os.path.dirname(__file__)
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
-
+#DATA_ROOT = os.path.join(PROJECT_ROOT, 'cftc.1k')
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )

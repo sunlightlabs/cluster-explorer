@@ -1,3 +1,5 @@
+import os
+
 DEBUG = True
 #for django debug toolbar
 MIDDLEWARE_CLASSES = (
@@ -24,3 +26,5 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
 )
+
+DATA_ROOT = os.path.join(os.path.dirname(__file__), 'cftc.1k')
