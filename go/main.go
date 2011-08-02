@@ -22,14 +22,20 @@ func main() {
     i, j, found := 0, 0, true
     n := 0
     for true {
-        ToJSONFile(a.ToLists(), fmt.Sprintf("%s/%d.json", out_dir, n))
-        fmt.Printf(".")
         i, j, found = MinLink(m, a)
+        
         if ! found {
             break
         }
+        
+        // don't begin writing until all exact matches have been found
+        if m.Value(i, j) > 0 {
+            ToJSONFile(a.ToLists(), fmt.Sprintf("%s/%d.json", out_dir, n))
+            fmt.Printf(".")
+            n++
+        }
+        
         a.Merge(i, j)
-        n++
     }
     
     fmt.Printf("\nDone clustering in %d steps.\n", n)
