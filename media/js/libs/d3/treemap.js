@@ -21,14 +21,12 @@ function drawIt(someData, hash) {
     var theThings = div.data([someData]).selectAll("div").data(treemap.nodes);
     //Update
     theThings
-        .html(function(d, i) { return d.children ? null : "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a><p>"+d.docs[0].text+"</p>"; })
         .transition().duration(1500)
             .call(cell)
     //Enter
     theThings.enter()
         .append("div").attr("class","cell")
         .style("background", function(d) { return d.count ? color(d.count) : null; })
-        .html(function(d, i) { return d.children ? null : "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a>"; })
         .transition().duration(1500)
             .call(cell)
     
@@ -37,12 +35,29 @@ function drawIt(someData, hash) {
         .transition().duration(1500)
             .style("width","0px")
             .remove();
+    
+    div.selectAll('div')
+        .html(function(d, i) {
+            var ret = ""
+            if (d.children == null) {
+                ret += "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a>";
+                if (d.dx-1 > 80 || d.dy-1 > 80) {
+                    ret += "<p>"+d.docs[0].text+"</p>";
+                }
+                return ret;
+            }
+        })
+    
+    div.selectAll('div')
 }
 
 function cell() {
   this
+      .attr("id", function(d, i){ return "cluster-"+(i-1); })
       .style("left", function(d) { return d.x + "px"; })
       .style("top", function(d) { return d.y + "px"; })
       .style("width", function(d) { return d.dx - 1 + "px"; })
       .style("height", function(d) { return d.dy - 1 + "px"; });
 }
+// width = d.dx-1
+// height = d.dy-1

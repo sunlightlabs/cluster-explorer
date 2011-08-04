@@ -98,6 +98,16 @@
 								drawIt(data.step, hash);
 							},
 					cluster	: function(data) {
+								if ($("#cluster_overlay").is(":hidden")) {
+										$("#cluster_overlay").css({left:event.pageX+"px", top:event.pageY+"px", display:"block"}).delay(50)
+										.animate({
+											position			: "fixed",
+											width				: "80%",
+											height				: "80%",
+											left 				: "10%",
+											top 				: "10%",  
+										})
+								}
 								$("#cluster_overlay #overlay_inner").html(clusterExplore.templates.cluster({cluster: data.cluster}));
 							},
 					doc		: function(data, state) {

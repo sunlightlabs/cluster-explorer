@@ -191,9 +191,16 @@ a:hover { color: #036; }
             display:block;
             width:100%;
             height:100%;
+            color: #111;
+            font-weight:bold;
+            text-decoration:none;
         }
             div.cell a:hover {
                 background:rgba(255,255,255,.6);
+            }
+            div.cell p {
+                position:absolute;
+                top:20px;
             }
 #slider, #fd-slider-slider {
     width:100%;
