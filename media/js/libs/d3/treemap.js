@@ -40,7 +40,7 @@ function drawIt(someData, params) {
         .html(function(d, i) {
             var ret = ""
             if (d.children == null) {
-                ret += "<a href='/"+params.step+'/'+(i-1)+"'>"+d.count+" documents</a>";
+                ret += "<a href='/"+params.step+'/'+i+"'>"+d.count+" documents</a>";
                 if (d.dx-1 > 80 || d.dy-1 > 80) {
                     ret += "<p>"+d.docs[0].text+"</p>";
                 }

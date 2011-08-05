@@ -8,9 +8,9 @@ urlpatterns = patterns('',
     url(r'api/(?P<step>\d+)/?$', 'explorer.views.api', name='home'),
     url(r'api/?$', 'explorer.views.api', name='home'),
     #index
-    url(r'(?P<step>\d+)/(?P<cluster>\d+)/(?P<doc>\d+)$', 'explorer.views.index', name='home'),
-    url(r'(?P<step>\d+)/(?P<cluster>\d+)$', 'explorer.views.index', name='home'),
-    url(r'(?P<step>\d+)$', 'explorer.views.index', name='home'),
+    url(r'(?P<step>\d+)/(?P<cluster>\d+)/(?P<doc>\d+)/?$', 'explorer.views.index', name='home'),
+    url(r'(?P<step>\d+)/(?P<cluster>\d+)/?$', 'explorer.views.index', name='home'),
+    url(r'(?P<step>\d+)/?$', 'explorer.views.index', name='home'),
     
     url(r'$', 'explorer.views.index', name='home'),
 )

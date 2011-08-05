@@ -7,8 +7,8 @@
 <h3>Cluster <%= cluster.id %>, containing <%= count %> documents</h3>
 <ul id="doc-list" data-cluster-total=<%= count %>>
 <% for (var i = 0; i < docs.length; i++) { %>
-	<li id="doc-<%= i %>">
-		<a class="doc-link" href="<%= State.cleanUrl+'/'+i %>"><%= docs[i].text %></a><br />
+	<li id="doc-<%= i+1 %>">
+		<a class="doc-link" href="<%= State.cleanUrl+'/'+(i+1) %>"><%= docs[i].text %></a><br />
 		<cite><%= docs[i].name %>, <%= docs[i].org %></cite>
 	</li>
 <% } %>

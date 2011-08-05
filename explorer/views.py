@@ -10,32 +10,30 @@ all_docs = ClusterHierarchy(settings.DATA_ROOT)
 def _get_params(step = None, cluster=None, doc=None):
     if step:
         step = int(step)
+    else:
+        step = 1
     if cluster:
         cluster = int(cluster)
     if doc:
         doc = int(doc)
     return {'step':step,'cluster':cluster,'doc':doc}
 
-def _get_step(step = 0, cluster = 0):
+def _get_step(step = 1, cluster = 1):
     count = { # You can probably do this in the template
         "steps"     : len(all_docs),
-        "clusters"  : len(all_docs[int(step)]),
+        "clusters"  : len(all_docs[int(step)-1]),
     }
-    params = { #this is available with a RequestContext, get rid of it probably
-        "step"      : int(step)+1,
-        "cluster"   : cluster,
-    }
-    clusters = [doc_to_dict(i,1,20) for i in all_docs[int(step)]]
-    return {"clusters":clusters, "params":params, "count":count} 
+    clusters = [doc_to_dict(i,1,20) for i in all_docs[int(step)-1]]
+    return {"clusters":clusters, "count":count} 
 
-def _get_cluster(step = 0, cluster = 0, limit = 0):
+def _get_cluster(step = 1, cluster = 1, limit = 0):
     
-    return_dict = doc_to_dict(all_docs[int(step)][int(cluster)],limit,20)
+    return_dict = doc_to_dict(all_docs[int(step)-1][int(cluster)-1],limit,20)
     return_dict['id'] = cluster
     return return_dict
 
-def _get_doc(step = 0, cluster = 0, doc = 0):
-    return_dict = doc_to_dict( [all_docs[int(step)][int(cluster)][int(doc)]] )
+def _get_doc(step = 1, cluster = 1, doc = 1):
+    return_dict = doc_to_dict( [all_docs[int(step)-1][int(cluster)-1][int(doc)-1]] )
     return_dict['id'] = doc
     return return_dict
 
@@ -45,13 +43,10 @@ def index(request, step = None, cluster = None, doc = None):
     if doc:
         response_dict['doc']        = _get_doc(int(step),int(cluster),int(doc))        
     if cluster:
-        try:
-            limit = int(request.GET['limit'])
-        except:
-            limit = 10
+        #limit = int(request.GET.get('limit', 10))
         response_dict['cluster']    = _get_cluster(int(step),int(cluster))
     if step:
-        response_dict['step']       = _get_step(int(step)-1)
+        response_dict['step']       = _get_step(int(step))
     else:
         response_dict['step']       = _get_step()
 
@@ -69,7 +64,7 @@ def api(request, step = None, cluster = None, doc = None):
             limit = 0
         response_dict['cluster']    = _get_cluster(int(step),int(cluster), limit)
     elif step:
-        response_dict['step']       = _get_step(int(step)-1)
+        response_dict['step']       = _get_step(int(step))
     else:
         response_dict['step']       = _get_step()
 

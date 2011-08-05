@@ -91,7 +91,7 @@
 			
 				ajax : {
 					step	: function(data, hash) {
-								$('#cluster_info').html(clusterExplore.templates.step({c : data}));
+								$('#cluster_info').html(clusterExplore.templates.step({c : data, params : data.params}));
 								$('#loader').delay(500).fadeOut('fast');
 								$("#cluster_overlay #overlay_inner").empty();
 								$("#cluster_overlay").attr('style','').attr('class','');
