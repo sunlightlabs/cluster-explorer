@@ -9,3 +9,5 @@ watcher.rb
 *.out
 _*
 local_settings.py
+data
+data/*

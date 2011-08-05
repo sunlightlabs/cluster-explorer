@@ -194,13 +194,18 @@ a:hover { color: #036; }
             color: #111;
             font-weight:bold;
             text-decoration:none;
+            background:transparent;
+            z-index:5;
+            position:relative;
         }
             div.cell a:hover {
-                background:rgba(255,255,255,.6);
+                background:rgba(255,255,255,.4);
             }
             div.cell p {
                 position:absolute;
                 top:20px;
+                z-index:4;
+                color:#111;
             }
 #slider, #fd-slider-slider {
     width:100%;

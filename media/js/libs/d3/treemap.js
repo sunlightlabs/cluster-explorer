@@ -15,8 +15,8 @@ var div = d3.select("#chart").append("div")
    .style("height", h + "px")
    .style("margin", "0 auto");
 
-function drawIt(someData, hash) {
-    if (hash.substr(-1) != "/") hash = hash+"/";
+function drawIt(someData, params) {
+    //if (hash.substr(-1) != "/") hash = hash+"/";
     
     var theThings = div.data([someData]).selectAll("div").data(treemap.nodes);
     //Update
@@ -40,7 +40,7 @@ function drawIt(someData, hash) {
         .html(function(d, i) {
             var ret = ""
             if (d.children == null) {
-                ret += "<a href='"+hash+(i-1)+"'>"+d.count+" documents</a>";
+                ret += "<a href='/"+params.step+'/'+(i-1)+"'>"+d.count+" documents</a>";
                 if (d.dx-1 > 80 || d.dy-1 > 80) {
                     ret += "<p>"+d.docs[0].text+"</p>";
                 }

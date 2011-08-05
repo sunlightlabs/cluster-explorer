@@ -95,7 +95,7 @@
 								$('#loader').delay(500).fadeOut('fast');
 								$("#cluster_overlay #overlay_inner").empty();
 								$("#cluster_overlay").attr('style','').attr('class','');
-								drawIt(data.step, hash);
+								drawIt(data.step, data.params);
 							},
 					cluster	: function(data) {
 								if ($("#cluster_overlay").is(":hidden")) {
@@ -113,9 +113,9 @@
 					doc		: function(data, state) {
 								$('#'+state.data.id+" a").after(clusterExplore.templates.doc({ doc: data.doc }) );
 							},
-					callback: function(data, state) {
+					callback: function(data, state, params) {
 									if(data.step) {
-										this.step(data, state.hash);
+										this.step(data);
 									} else
 									if (data.cluster) {
 										this.cluster(data);
