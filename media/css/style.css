@@ -133,6 +133,7 @@ a:hover { color: #036; }
     box-sizing:border-box;
     padding:20px;
     color:#FFF;
+    z-index:6;
 }
     #loader {
         padding-top:10px;
