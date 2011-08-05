@@ -71,7 +71,7 @@
 						url = State.hash.split("/");
 						console.log(url);
 						d3.json("/api/"+url[1], function(data) {
-							drawIt(data.step, State.hash);
+							drawIt(data.step, data.params);
 						})
 					})
 				}
