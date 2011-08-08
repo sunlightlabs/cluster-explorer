@@ -3,7 +3,9 @@ from django.http import HttpResponse
 import settings
 from cluster.hierarchy import *
 import json
+import StringIO
 from helpers import doc_to_dict
+from django.views.decorators.http import condition
 
 all_docs = ClusterHierarchy(settings.DATA_ROOT)
 
@@ -70,3 +72,10 @@ def api(request, step = None, cluster = None, doc = None):
 
     response_dict = json.dumps(response_dict)
     return HttpResponse(response_dict, mimetype="application/json")
+
+@condition(etag_func=None) #Django has a known bug with streaming HTTP responses- see https://code.djangoproject.com/ticket/7581. This is here in case this project ever ends up using middleware in a way that would break streaming, but it currently isn't.
+def csv(request, step):
+    out = StringIO.StringIO()
+    response = HttpResponse(all_docs.write_csv(int(step), out), mimetype="text/csv")
+    response['Content-Disposition'] = "attachment; filename=step-%s.csv"%(step)
+    return response

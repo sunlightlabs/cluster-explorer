@@ -11,6 +11,9 @@ urlpatterns = patterns('',
     url(r'(?P<step>\d+)/(?P<cluster>\d+)/(?P<doc>\d+)/?$', 'explorer.views.index', name='home'),
     url(r'(?P<step>\d+)/(?P<cluster>\d+)/?$', 'explorer.views.index', name='home'),
     url(r'(?P<step>\d+)/?$', 'explorer.views.index', name='home'),
+    #csv
+    url(r'(?P<step>\d+)/csv/?$', 'explorer.views.csv', name='home'),
+    
     
     url(r'$', 'explorer.views.index', name='home'),
 )

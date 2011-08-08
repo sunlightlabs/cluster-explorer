@@ -52,12 +52,18 @@ class ClusterHierarchy(object):
         writer.writerow(['cluster number','name', 'org', 'date', 'text'])
         
         clusters = self[step]
+        length = len(clusters)
         
-        for i in range(0, len(clusters)):
+        for i in range(0, length):
             for d in clusters[i]:
                 writer.writerow([i] + [to_ascii(x) for x in (d['name'], d['org'], d['date'], d['text'])])
-        
-        
+                outfile.seek(0)
+                data = outfile.read()
+                outfile.seek(0)
+                outfile.truncate()
+                yield data
+            if i == length:
+                outfile.close()
 
 
 if __name__ == '__main__':
