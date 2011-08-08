@@ -44,6 +44,21 @@ class ClusterHierarchy(object):
         clusters = json.load(open("%s/%d.json" % (self.data_path, n), 'r'))
         return [IndirectList(cluster, self.docs) for cluster in clusters]
 
+    def write_csv(self, step, outfile):
+        def to_ascii(data):
+            return data.encode('ascii', 'replace')
+        
+        writer = csv.writer(outfile)
+        writer.writerow(['cluster number','name', 'org', 'date', 'text'])
+        
+        clusters = self[step]
+        
+        for i in range(0, len(clusters)):
+            for d in clusters[i]:
+                writer.writerow([i] + [to_ascii(x) for x in (d['name'], d['org'], d['date'], d['text'])])
+        
+        
+
 
 if __name__ == '__main__':
     in_file = sys.argv[1]
