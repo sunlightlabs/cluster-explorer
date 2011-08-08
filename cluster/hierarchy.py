@@ -34,7 +34,7 @@ class ClusterHierarchy(object):
     
     def __init__(self, data_path):
         self.data_path = data_path
-        self.docs = cPickle.load(open("%s/docs.pickle" % data_path, 'r'))
+        self.docs = json.load(open("%s/docs.json" % data_path, 'r'))
         self.num_steps = int(json.load(open("%s/num_steps.json" % data_path, 'r')))
     
     def __len__(self):

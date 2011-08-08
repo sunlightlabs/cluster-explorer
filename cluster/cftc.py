@@ -4,6 +4,7 @@ import re
 import os
 import sys
 import cPickle
+import json
 
 from clustering import Clustering
 from ngrams import NGramSpace 
@@ -58,7 +59,14 @@ class CFTCDocument(object):
     
     def get_output_values(self):
         return [self.name, self.org, self.date, self.text]
+        
 
+def pickled2json(in_filename, out_filename):
+    docs = cPickle.load(open(in_filename, 'r'))
+    json.dump([doc2dict(d) for d in docs], open(out_filename, 'w'))
+
+def doc2dict(doc):
+    return dict(name=doc.name, org=doc.org, date=doc.date, text=doc.text)
 
 def setup(source, pdf_path):
     ngrams = NGramSpace(4)
