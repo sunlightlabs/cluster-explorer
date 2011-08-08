@@ -29,7 +29,7 @@ def _get_step(step = 1, cluster = 1):
     return {"clusters":clusters, "count":count} 
 
 def _get_cluster(step = 1, cluster = 1, limit = 0):
-    
+    cluster_docs = all_docs[int(step)-1][int(cluster)-1]
     return_dict = doc_to_dict(all_docs[int(step)-1][int(cluster)-1],limit,20)
     return_dict['id'] = cluster
     return return_dict
@@ -75,7 +75,6 @@ def api(request, step = None, cluster = None, doc = None):
 
 @condition(etag_func=None) #Django has a known bug with streaming HTTP responses- see https://code.djangoproject.com/ticket/7581. This is here in case this project ever ends up using middleware in a way that would break streaming, but it currently isn't.
 def csv(request, step):
-    out = StringIO.StringIO()
-    response = HttpResponse(all_docs.write_csv(int(step), out), mimetype="text/csv")
+    response = HttpResponse(all_docs.stream_csv(int(step)), mimetype="text/csv")
     response['Content-Disposition'] = "attachment; filename=step-%s.csv"%(step)
     return response

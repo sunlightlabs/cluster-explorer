@@ -2,6 +2,7 @@ import cPickle
 import csv
 import sys
 import json
+import StringIO
 
 from cluster.cftc import CFTCDocument
 from cluster.clustering import Clustering
@@ -44,26 +45,30 @@ class ClusterHierarchy(object):
         clusters = json.load(open("%s/%d.json" % (self.data_path, n), 'r'))
         return [IndirectList(cluster, self.docs) for cluster in clusters]
 
-    def write_csv(self, step, outfile):
+    def stream_csv(self, step):
+        csvbuffer = StringIO.StringIO()
+        
         def to_ascii(data):
             return data.encode('ascii', 'replace')
         
-        writer = csv.writer(outfile)
+        writer = csv.writer(csvbuffer)
         writer.writerow(['cluster number','name', 'org', 'date', 'text'])
         
         clusters = self[step]
-        length = len(clusters)
         
-        for i in range(0, length):
-            for d in clusters[i]:
-                writer.writerow([i] + [to_ascii(x) for x in (d['name'], d['org'], d['date'], d['text'])])
-                outfile.seek(0)
-                data = outfile.read()
-                outfile.seek(0)
-                outfile.truncate()
+        for i in range(0, len(clusters)):
+            for d in clusters[len(clusters)-i-1]:
+                """
+                uses len(clusters)-i-1 in array index but writes len(clusters)-1 to file.
+                this is so the CSV will match the web frontend, which is 1-indexed.
+                """
+                writer.writerow([len(clusters)-i] + [to_ascii(x) for x in (d['name'], d['org'], d['date'], d['text'])])
+                csvbuffer.seek(0)
+                data = csvbuffer.read()
+                csvbuffer.seek(0)
+                csvbuffer.truncate()
                 yield data
-            if i == length:
-                outfile.close()
+        outfile.close()
 
 
 if __name__ == '__main__':
