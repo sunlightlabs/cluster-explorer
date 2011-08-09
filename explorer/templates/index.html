@@ -7,6 +7,9 @@
 		<h2>Step <span id="currentStep">{{ params.step }}</span> of {{ step.count.steps }}, containing <span id="currentClusters">{{ step.count.clusters }}</span> clusters</h2>
 		<a class="button" href="/{{params.step}}/csv">Export to CSV</a>
 	</div>
+	<div class="chart_buttons">
+		<button id="makeFlat">Flat</button><button id="makeProportional">Proportional</button>
+	</div>
 	<div id="chart"></div>
 	<div id="cluster_overlay" {% if cluster %}class="show"{% endif %}>
 		<div id="close">Close</div>

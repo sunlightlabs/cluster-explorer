@@ -1,4 +1,4 @@
-var w = 1140,
+var w = 1240,
     h = 600,
     color = d3.scale.category20c();
 
@@ -14,6 +14,21 @@ var div = d3.select("#chart").append("div")
    .style("width", w + "px")
    .style("height", h + "px")
    .style("margin", "0 auto");
+
+function treemapInnerHtml(params) {
+    if (params == 'undefined') params = clusterExplore.params;
+    div.selectAll('div')
+        .html(function(d, i) {
+            var ret = ""
+            if (d.children == null) {
+                ret += "<a href='/"+params.step+'/'+i+"'>"+d.count+" documents</a>";
+                //if (d.dx-1 > 80 || d.dy-1 > 80) {
+                    ret += "<p>"+d.docs[0].text+"</p>";
+                //}
+                return ret;
+            }
+        });
+}
 
 function drawIt(someData, params) {
     //if (hash.substr(-1) != "/") hash = hash+"/";
@@ -36,19 +51,27 @@ function drawIt(someData, params) {
             .style("width","0px")
             .remove();
     
-    div.selectAll('div')
-        .html(function(d, i) {
-            var ret = ""
-            if (d.children == null) {
-                ret += "<a href='/"+params.step+'/'+i+"'>"+d.count+" documents</a>";
-                if (d.dx-1 > 80 || d.dy-1 > 80) {
-                    ret += "<p>"+d.docs[0].text+"</p>";
-                }
-                return ret;
-            }
-        })
-    
-    div.selectAll('div')
+    treemapInnerHtml(params);
+}
+
+function makeFlat() {
+    treemap.value(function(d){
+        return 1;
+    });
+    div.selectAll("div").data( treemap.nodes ).call(cell);
+    $(this).siblings().attr('disabled','');
+    $(this).attr('disabled','disabled');
+    treemapInnerHtml();
+}
+
+function makeProportional() {
+    treemap.value(function(d){
+        return d.count;
+    });
+    div.selectAll("div").data( treemap.nodes ).call(cell);
+    $(this).siblings().attr('disabled','');
+    $(this).attr('disabled','disabled');
+    treemapInnerHtml();
 }
 
 function cell() {
