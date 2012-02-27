@@ -49,7 +49,10 @@ class ClusterHierarchy(object):
         csvbuffer = StringIO.StringIO()
         
         def to_ascii(data):
-            return data.encode('ascii', 'replace')
+            if data:
+                return unicode(data).encode('ascii', 'replace')
+            else:
+                return ''
         
         writer = csv.writer(csvbuffer)
         writer.writerow(['cluster number','name', 'org', 'date', 'text'])
@@ -62,13 +65,13 @@ class ClusterHierarchy(object):
                 uses len(clusters)-i-1 in array index but writes len(clusters)-1 to file.
                 this is so the CSV will match the web frontend, which is 1-indexed.
                 """
-                writer.writerow([len(clusters)-i] + [to_ascii(x) for x in (d['name'], d['org'], d['date'], d['text'])])
+                writer.writerow([len(clusters)-i] + [to_ascii(x) for x in (d['name'], d.get('org', ''), d['date'], d['text'])])
                 csvbuffer.seek(0)
                 data = csvbuffer.read()
                 csvbuffer.seek(0)
                 csvbuffer.truncate()
                 yield data
-        outfile.close()
+        csvbuffer.close()
 
 
 if __name__ == '__main__':
