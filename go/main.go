@@ -8,8 +8,8 @@ import (
 
 
 func main() {
-    sim_file := os.Args[1]
-    out_dir := os.Args[2]
+    out_dir := os.Args[1]
+    sim_file := os.Args[1] + "/" + "docs.sim"
     
     fmt.Printf("Loading distance matrix from %s...\n", sim_file)
     

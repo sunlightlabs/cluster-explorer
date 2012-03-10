@@ -1,8 +1,8 @@
 
 import os
-import cPickle
 import json
 import sys
+import subprocess
 
 from clustering import Clustering
 from ngrams import NGramSpace 
@@ -29,27 +29,27 @@ class LSDocument(object):
     
     def to_dict(self):
         return dict(name=self.name, date=self.date, text=self.text)
-        
-
-def setup(source):
-    ngrams = NGramSpace(4)
-    print "parsing documents at %s..." % source
-    docs = []
-    for row in json.load(open(source, 'r')):
-        docs += [LSDocument(row.get('name_of_filer', ''), row['date_posted'], doc['text'], ngrams) for doc in row['documents'] if doc.get('text')]
-    print "clustering %d documents..." % len(docs)
-    clustering = Clustering([doc.parsed for doc in docs])
-    return (clustering, docs)
-
-
-
 
 
 if __name__ == '__main__':
-    root = os.path.dirname(sys.argv[1])
-    (clustering, docs) = setup(sys.argv[1])
-    print "\nWriting clustering to %s..." % os.path.join(root, 'clustering.pickle')
-    cPickle.dump((clustering, docs), open(os.path.join(root, 'clustering.pickle'), 'wb'), cPickle.HIGHEST_PROTOCOL)
-    clustering.distance.write_binary(os.path.join(root, 'ls.sim'))
+    sourcefile = sys.argv[1]
+    root = os.path.dirname(sourcefile)
+
+    ngrams = NGramSpace(4)
+
+    print "parsing documents at %s..." % root
+    docs = []
+    for row in json.load(open(sourcefile, 'r')):
+        docs += [LSDocument(row.get('name_of_filer', ''), row['date_posted'], doc['text'], ngrams) for doc in row['documents'] if doc.get('text')]
+
+    print "computing similarities for %d documents..." % len(docs)
+    clustering = Clustering([doc.parsed for doc in docs])
+
+    print "writing similarities to disk..."
+    clustering.distance.write_binary(os.path.join(root, 'out', 'docs.sim'))
     json.dump([d.to_dict() for d in docs], open(os.path.join(root, 'out', 'docs.json'), 'w'))
+    json.dump(len(docs), open(os.path.join(root, 'out', 'num_steps.json'), 'w'))
+    
+    print "running clustering..."
+    subprocess.call(['go/main', os.path.join(root, 'out')])
     
