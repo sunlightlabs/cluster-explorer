@@ -7,7 +7,6 @@ watcher.rb
 *.a
 *.6
 *.out
-_*
 local_settings.py
 data
 data/*
