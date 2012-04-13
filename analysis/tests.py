@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.db import connection, transaction
 
 from ingestion import *
+from phrases import PhraseSequencer
 from sql_utils import execute_file
 
 
