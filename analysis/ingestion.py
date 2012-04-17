@@ -28,10 +28,6 @@ class DocumentIngester(object):
         pass
 
 
-def parse(text, sequencer):
-    phrases = [sequencer.sequence(sentence) for sentence in break_sentences(text)]
-    phrases.sort()
-    return phrases
 
 
 def ingest_documents(docs):

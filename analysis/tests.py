@@ -5,6 +5,7 @@ from django.db import connection, transaction
 
 from ingestion import *
 from phrases import PhraseSequencer
+from parser import parse
 from sql_utils import execute_file
 
 
@@ -64,7 +65,7 @@ class TestParser(DBTestCase):
     
     def test_basic(self):
         t1 = "This is a basic text. Two sentences. Maybe three?"
-        t2 = "Two sentences. Maybe three? This is a basic text."
+        t2 = "Two sentences. Maybe...three? this is a basic text."
         s = PhraseSequencer(0)
         
         p1 = parse(t1, s)
