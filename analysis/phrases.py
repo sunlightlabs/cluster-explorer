@@ -31,15 +31,17 @@ class PhraseSequencer(object):
         
         """
 
-        existing_id = self.phrase_map.get(phrase, None)
-        if existing_id is not None:
-            return existing_id
-            
-        self.phrase_map[phrase] = self.next_id
-        self.writer.writerow([self.corpus_id, self.next_id, phrase])
-        self.next_id += 1
+        phrase_id = self.phrase_map.get(phrase, None)
+        if phrase_id is not None:
+            return phrase_id
         
-        return self.next_id - 1
+        phrase_id = self.next_id
+        self.next_id += 1
+
+        self.phrase_map[phrase] = phrase_id
+        self.writer.writerow([self.corpus_id, phrase_id, phrase])
+        
+        return phrase_id 
 
     def upload_new_phrases(self):
         """Upload phrases created during use of sequencer"""

@@ -9,6 +9,7 @@ create table documents (
     corpus_id integer REFERENCES corpora(corpus_id),
     document_id integer,
     text text,
+    -- plus metadata
     PRIMARY KEY (corpus_id, document_id)
 );
 

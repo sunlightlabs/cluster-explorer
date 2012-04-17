@@ -73,7 +73,34 @@ class TestParser(DBTestCase):
         
         self.assertEqual([0, 1, 2], p1)
         self.assertEqual([0, 1, 2], p2)
+       
         
+class TestDocumentIngester(DBTestCase):
+    
+    def test_ingester(self):
+        i = DocumentIngester(self.corpus_id)
+        s = PhraseSequencer(self.corpus_id)
+        
+        t1 = 'This document has three sentences. One of which matches. Two of which do not.'
+        t2 = 'This document has only two sentences. One of which matches.'
+        
+        i.record(t1, parse(t1, s))
+        i.record(t2, parse(t2, s))
+        
+        s.upload_new_phrases()
+        i.upload_new_documents()
+        
+        c = connection.cursor()
+        
+        c.execute("select count(*) from documents")
+        self.assertEqual(2, c.fetchone()[0])
+        
+        c.execute("select count(*) from phrase_occurrences")
+        self.assertEqual(5, c.fetchone()[0])
+        
+        
+        
+
 
 if __name__ == '__main__':
     unittest.main()
