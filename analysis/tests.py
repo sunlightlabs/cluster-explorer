@@ -97,6 +97,26 @@ class TestDocumentIngester(DBTestCase):
         
         c.execute("select count(*) from phrase_occurrences")
         self.assertEqual(5, c.fetchone()[0])
+
+        # make sure we can add on to existing data
+        i = DocumentIngester(self.corpus_id)
+        s = PhraseSequencer(self.corpus_id)
+        
+        t3 = 'This document has only two sentences. Only one of which is new.'
+        p3 = parse(t3, s)
+        
+        doc_id = i.record(t3, p3)
+        self.assertEqual(2, doc_id)
+        self.assertEqual([3, 4], p3)
+        
+        s.upload_new_phrases()
+        i.upload_new_documents()
+        
+        c.execute("select count(*) from documents")
+        self.assertEqual(3, c.fetchone()[0])
+        
+        c.execute("select count(*) from phrase_occurrences")
+        self.assertEqual(7, c.fetchone()[0])
         
         
         
