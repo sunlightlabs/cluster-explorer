@@ -46,3 +46,23 @@ class Corpus(object):
         self.cursor.execute("select phrase_text, phrase_id from phrases where corpus_id = %s", [self.id])
         return dict(self.cursor)
 
+    def similar_docs(self, doc_id, min_similarity=0.5):
+        """Return list of documents (doc IDs) ranked by similarity to given doc"""
+
+        self.cursor.execute("""
+                select high_document_id as doc_id, similarity
+                from similarities
+                where
+                    corpus_id = %(corpus_id)s
+                    and low_document_id = %(doc_id)s
+                    and similarity >= %(min_similarity)s
+            union all
+                select low_document_id as doc_id, similarity
+                from similarities
+                where
+                    corpus_id = %(corpus_id)s
+                    and high_document_id = %(doc_id)s
+                    and similarity >= %(min_similarity)s
+        """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
+
+        return self.cursor.fetchall()

@@ -8,7 +8,6 @@ from phrases import PhraseSequencer
 from parser import parse
 from sql_utils import execute_file
 from corpus import Corpus
-from analysis import similar_docs
 
 
 class DBTestCase(TestCase):
@@ -211,12 +210,12 @@ class TestAnalysis(DBTestCase):
             "There will be two of these."
         ])
 
-        self.assertEqual([], similar_docs(self.corpus.id, 3))
-        self.assertEqual([], similar_docs(self.corpus.id, 0))
-        self.assertEqual([(1, 0.25)], similar_docs(self.corpus.id, 0, min_similarity=0.2))
-        self.assertEqual([(5, 1.0)], similar_docs(self.corpus.id, 6))
-        self.assertEqual([(6, 1.0)], similar_docs(self.corpus.id, 5))
-        sim_2 = similar_docs(self.corpus.id, 2, min_similarity=0.2)
+        self.assertEqual([], self.corpus.similar_docs(3))
+        self.assertEqual([], self.corpus.similar_docs(0))
+        self.assertEqual([(1, 0.25)], self.corpus.similar_docs(0, min_similarity=0.2))
+        self.assertEqual([(5, 1.0)], self.corpus.similar_docs(6))
+        self.assertEqual([(6, 1.0)], self.corpus.similar_docs(5))
+        sim_2 = self.corpus.similar_docs(2, min_similarity=0.2)
         self.assertEqual(2, len(sim_2))
         self.assertEqual((4, 0.5), sim_2[0])
         self.assertEqual(1, sim_2[1][0])
