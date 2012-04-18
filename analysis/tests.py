@@ -118,8 +118,81 @@ class TestDocumentIngester(DBTestCase):
         c.execute("select count(*) from phrase_occurrences")
         self.assertEqual(7, c.fetchone()[0])
         
+    def test_queries(self):
+        self.test_ingester()
         
+        c = connection.cursor()
+        c.execute("""
+            select document_id, array_agg(phrase_id)
+            from (
+                select document_id, phrase_id
+                from phrase_occurrences
+                where
+                    corpus_id = %s
+                order by document_id, phrase_id) x
+            group by document_id
+            order by document_id
+        """, [self.corpus_id])
         
+        self.assertEqual([(0, [0, 1, 2]), (1, [1, 3]), (2, [3, 4])], c.fetchall())
+
+    def test_similarities(self):
+        
+        self.test_ingester()
+        
+        compute_similarities(self.corpus_id, [0, 1, 2])
+        
+        c = connection.cursor()
+        
+        c.execute("select count(*) from similarities")
+        self.assertEqual(3, c.fetchone()[0])
+        
+        self.assertEqual(0.25, self.get_sim(c, 0, 1))
+        self.assertEqual(0, self.get_sim(c, 0, 2))
+        self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
+        
+    def test_complete(self):
+        ingest_documents(self.corpus_id, [
+            'This document has three sentences. One of which matches. Two of which do not.',
+            'This document has only two sentences. One of which matches.',
+            'This document has only two sentences. Only one of which is new.'
+        ])
+
+        c = connection.cursor()
+    
+        c.execute("select count(*) from similarities")
+        self.assertEqual(3, c.fetchone()[0])        
+        self.assertEqual(0.25, self.get_sim(c, 0, 1))
+        self.assertEqual(0, self.get_sim(c, 0, 2))
+        self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
+
+        ingest_documents(self.corpus_id, [
+            "This document matches nothing else.",
+            "Only one of which is new."
+        ])
+ 
+        c.execute("select count(*) from similarities")
+        self.assertEqual(10, c.fetchone()[0])        
+        self.assertEqual(0, self.get_sim(c, 0, 3))
+        self.assertEqual(0, self.get_sim(c, 0, 4))
+        self.assertEqual(0, self.get_sim(c, 1, 3))
+        self.assertEqual(0, self.get_sim(c, 1, 4))
+        self.assertEqual(0, self.get_sim(c, 2, 3))
+        self.assertAlmostEqual(0.5, self.get_sim(c, 2, 4))
+        self.assertEqual(0, self.get_sim(c, 3, 4))
+
+
+    def get_sim(self, c, x, y):
+        c.execute("""
+            select similarity
+            from similarities
+            where
+                corpus_id = %s
+                and low_document_id = %s
+                and high_document_id = %s
+        """, [self.corpus_id, min(x, y), max(x, y)])
+        
+        return c.fetchone()[0]
 
 
 if __name__ == '__main__':

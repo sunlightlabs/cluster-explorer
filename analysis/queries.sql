@@ -2,14 +2,15 @@
 
 
 -- get the phrases for a document
-select array_agg(phrase_id)
+select document_id, array_agg(phrase_id)
 from (
-    select phrase_id
+    select document_id, phrase_id
     phrase_occurrences
     where
         corpus_id = ?
         and document_id = ?
-    order by phrase_id) x
+    order by document_id, phrase_id) x
+group by document_id;
     
     
 -- get all docs above a certain similarity with given doc
