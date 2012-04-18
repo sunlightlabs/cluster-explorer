@@ -66,3 +66,39 @@ class Corpus(object):
         """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
 
         return self.cursor.fetchall()
+        
+    def phrase_overlap(self, doc_id, min_similarity):
+        self.cursor.execute("""
+            with
+                similar_documents as (
+                        select high_document_id as doc_id, similarity
+                        from similarities
+                        where
+                            corpus_id = %(corpus_id)s
+                            and low_document_id = %(doc_id)s
+                            and similarity >= %(min_similarity)s
+                    union all
+                        select low_document_id as doc_id, similarity
+                        from similarities
+                        where
+                            corpus_id = %(corpus_id)s
+                            and high_document_id = %(doc_id)s
+                            and similarity >= %(min_similarity)s
+                ),
+                phrases_in_target_doc as (
+                    select phrase_id
+                    from phrase_occurrences
+                    where
+                        corpus_id = %(corpus_id)s
+                        and document_id = %(doc_id)s
+                )
+            select phrase_id, count(*)
+            from phrases_in_target_doc
+            left join phrase_occurrences using (phrase_id)
+            where
+                corpus_id = %(corpus_id)s
+                and document_id in (select doc_id from similar_documents)
+            group by phrase_id
+        """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
+        
+        return dict(self.cursor)

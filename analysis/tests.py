@@ -215,12 +215,33 @@ class TestAnalysis(DBTestCase):
         self.assertEqual([(1, 0.25)], self.corpus.similar_docs(0, min_similarity=0.2))
         self.assertEqual([(5, 1.0)], self.corpus.similar_docs(6))
         self.assertEqual([(6, 1.0)], self.corpus.similar_docs(5))
+        self.assertEqual([(4, 0.5)], self.corpus.similar_docs(2))
         sim_2 = self.corpus.similar_docs(2, min_similarity=0.2)
         self.assertEqual(2, len(sim_2))
         self.assertEqual((4, 0.5), sim_2[0])
         self.assertEqual(1, sim_2[1][0])
         self.assertAlmostEqual(1.0/3, sim_2[1][1], places=5)
 
+    def test_phrase_overlap(self):
+        i = DocumentIngester(self.corpus)
+        i.ingest([
+            "This document has three sentences. One of which matches. Two of which do not.",
+            "This document has only two sentences. One of which matches.",
+            "This document has only two sentences. Only one of which is new.",
+            "This document matches nothing else.",
+            "Only one of which is new.",
+            "There will be two of these.",
+            "There will be two of these."
+        ])
+
+        overlap = self.corpus.phrase_overlap(2, 0.2)
+        self.assertEqual({3: 1, 4:1}, overlap)
+        
+        overlap = self.corpus.phrase_overlap(2, 0.4)
+        self.assertEqual({4:1}, overlap)
+        
+        
+        
 
 if __name__ == '__main__':
     unittest.main()
