@@ -1,7 +1,7 @@
 
 
 create table corpora (
-    corpus_id integer PRIMARY KEY
+    corpus_id serial PRIMARY KEY
     -- plus metadata
 );
 

@@ -2,24 +2,18 @@
 import tempfile
 import csv
 
-from django.db import connection
-
 
 class PhraseSequencer(object):
 
-    def __init__(self, corpus_id):
+    def __init__(self, corpus):
         """Initialize the sequencer from stored phrases"""
 
-        self.corpus_id = corpus_id
-
-        c = connection.cursor()
+        self.corpus = corpus
         
-        c.execute("select max(phrase_id) from phrases where corpus_id = %s", [corpus_id])
-        result = c.fetchone()
-        self.next_id = result[0] + 1 if result[0] is not None else 0
+        max_phrase_id = self.corpus.get_max_phrase_id()
+        self.next_id = max_phrase_id + 1 if max_phrase_id is not None else 0
         
-        c.execute("select phrase_text, phrase_id from phrases where corpus_id = %s", [corpus_id])
-        self.phrase_map = dict(c)
+        self.phrase_map = self.corpus.get_all_phrases()
         
         self.new_phrase_file = tempfile.TemporaryFile()
         self.writer = csv.writer(self.new_phrase_file)
@@ -39,7 +33,7 @@ class PhraseSequencer(object):
         self.next_id += 1
 
         self.phrase_map[phrase] = phrase_id
-        self.writer.writerow([self.corpus_id, phrase_id, phrase])
+        self.writer.writerow([self.corpus.id, phrase_id, phrase])
         
         return phrase_id 
 
@@ -49,7 +43,7 @@ class PhraseSequencer(object):
         self.new_phrase_file.flush()
         self.new_phrase_file.seek(0)
         
-        connection.cursor().copy_from(self.new_phrase_file, 'phrases', sep=',')
+        self.corpus.upload_csv(self.new_phrase_file, 'phrases')
         
         self.new_phrase_file.close()
         self.new_phrase_file = tempfile.TemporaryFile()
