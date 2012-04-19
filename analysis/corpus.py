@@ -31,12 +31,13 @@ class Corpus(object):
     def get_all_docs(self):
         self.cursor.execute("""
             select document_id, array_agg(phrase_id)
-            from (
+            from documents
+            left join (
                 select document_id, phrase_id
                 from phrase_occurrences
                 where
                     corpus_id = %s
-                order by document_id, phrase_id) x
+                order by document_id, phrase_id) x using (document_id)
             group by document_id
         """, [self.id])
         
