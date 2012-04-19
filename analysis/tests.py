@@ -247,7 +247,29 @@ class TestAnalysis(DBTestCase):
         
         overlap = self.corpus.phrase_overlap(2, 0.4)
         self.assertEqual({4:1}, overlap)
-       
+
+class TestRealData(DBTestCase):
+
+    def test_multiline_doc(self):
+        
+        doc = 'First line.\nSecond line.'
+        i = DocumentIngester(self.corpus)
+        i.ingest([doc])
+        
+        c = connection.cursor()
+        c.execute('select count(*) from documents')
+        self.assertEqual(1, c.fetchone()[0])
+        
+
+    def test_lightsquared_breakage(self):
+        docs = ["Wireless broadband service is important, but it should not come at the expense of GPS.\nAll the studies show that LightSquared?s proposed network would cause interference and that there\nare no remedies.We rely on the FCC to protect the integrity of the GPS signal and we support their\nrecommendation to stop LightSquared?s current proposal. Since LORAN is phased out the\nrecreational Boater needs a reliable source for navigation. Please don't let LightSquared infringe on\nour rights!!!!\nThank You.\nTim\n\n"]
+
+        i = DocumentIngester(self.corpus)
+        i.ingest(docs)
+    
+        c = connection.cursor()
+        c.execute('select count(*) from documents')
+        self.assertEqual(1, c.fetchone()[0])
 
 if __name__ == '__main__':
     unittest.main()

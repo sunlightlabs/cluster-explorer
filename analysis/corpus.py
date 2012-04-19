@@ -26,7 +26,7 @@ class Corpus(object):
         return result[0] if result else None
         
     def upload_csv(self, file, tablename):
-        self.cursor.copy_from(file, tablename, sep=',')
+        self.cursor.copy_expert("copy %s from STDIN csv" % tablename, file)
     
     def get_all_docs(self):
         self.cursor.execute("""
