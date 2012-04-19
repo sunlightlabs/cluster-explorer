@@ -10,7 +10,8 @@ create table documents (
     document_id integer,
     text text,
     -- plus metadata
-    PRIMARY KEY (corpus_id, document_id)
+    PRIMARY KEY (corpus_id, document_id),
+    FOREIGN KEY (corpus_id) REFERENCES corpora (corpus_ID) ON DELETE CASCADE
 );
 
 create table phrases (
@@ -18,7 +19,8 @@ create table phrases (
     phrase_id integer,
     phrase_text varchar,
     PRIMARY KEY (corpus_id, phrase_id),
-    UNIQUE (corpus_id, phrase_text)
+    UNIQUE (corpus_id, phrase_text),
+    FOREIGN KEY (corpus_id) REFERENCES corpora (corpus_ID) ON DELETE CASCADE
 );
 
 create table phrase_occurrences (
