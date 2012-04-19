@@ -146,8 +146,23 @@ class TestDocumentIngester(DBTestCase):
         c = connection.cursor()
         
         c.execute("select count(*) from similarities")
-        self.assertEqual(3, c.fetchone()[0])
+        self.assertEqual(2, c.fetchone()[0])
         
+        self.assertEqual(0.25, self.get_sim(c, 0, 1))
+        self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
+
+    def test_similarities_cutoff(self):
+
+        self.test_ingester()
+
+        i = DocumentIngester(self.corpus)
+        i._compute_similarities([0, 1, 2], min_similarity=0.0)
+
+        c = connection.cursor()
+
+        c.execute("select count(*) from similarities")
+        self.assertEqual(3, c.fetchone()[0])
+
         self.assertEqual(0.25, self.get_sim(c, 0, 1))
         self.assertEqual(0, self.get_sim(c, 0, 2))
         self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
@@ -163,9 +178,8 @@ class TestDocumentIngester(DBTestCase):
         c = connection.cursor()
     
         c.execute("select count(*) from similarities")
-        self.assertEqual(3, c.fetchone()[0])        
+        self.assertEqual(2, c.fetchone()[0])        
         self.assertEqual(0.25, self.get_sim(c, 0, 1))
-        self.assertEqual(0, self.get_sim(c, 0, 2))
         self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
 
         i.ingest([
@@ -174,14 +188,8 @@ class TestDocumentIngester(DBTestCase):
         ])
  
         c.execute("select count(*) from similarities")
-        self.assertEqual(10, c.fetchone()[0])        
-        self.assertEqual(0, self.get_sim(c, 0, 3))
-        self.assertEqual(0, self.get_sim(c, 0, 4))
-        self.assertEqual(0, self.get_sim(c, 1, 3))
-        self.assertEqual(0, self.get_sim(c, 1, 4))
-        self.assertEqual(0, self.get_sim(c, 2, 3))
+        self.assertEqual(3, c.fetchone()[0])        
         self.assertAlmostEqual(0.5, self.get_sim(c, 2, 4))
-        self.assertEqual(0, self.get_sim(c, 3, 4))
 
 
     def get_sim(self, c, x, y):
@@ -239,9 +247,7 @@ class TestAnalysis(DBTestCase):
         
         overlap = self.corpus.phrase_overlap(2, 0.4)
         self.assertEqual({4:1}, overlap)
-        
-        
-        
+       
 
 if __name__ == '__main__':
     unittest.main()

@@ -95,7 +95,7 @@ class DocumentIngester(object):
                     break
                 yield (x, y)                
 
-    def _compute_similarities(self, new_doc_ids):
+    def _compute_similarities(self, new_doc_ids, min_similarity=0.1):
         sim_file = tempfile.TemporaryFile()
         sim_writer = csv.writer(sim_file)
         
@@ -105,7 +105,8 @@ class DocumentIngester(object):
     
         for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
             similarity = jaccard(docs[x], docs[y])
-            sim_writer.writerow([self.corpus.id, x, y, similarity])
+            if similarity >= min_similarity:
+                sim_writer.writerow([self.corpus.id, x, y, similarity])
             
             i += 1
             if i % 1000 == 0:
