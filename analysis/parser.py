@@ -15,6 +15,7 @@ def normalize(token):
 
 
 def parse(text, sequencer):
-    phrases = [sequencer.sequence(normalize(sentence)) for sentence in break_sentences(text)]
+    sentences = [s for s in break_sentences(text) if len(s) < 1000] # long sentences are probably parse errors
+    phrases = [sequencer.sequence(normalize(sentence)) for sentence in sentences]
     phrases.sort()
     return phrases
