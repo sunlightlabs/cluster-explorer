@@ -64,14 +64,20 @@ class DocumentIngester(object):
         """Ingest set of new documents"""
         
         new_doc_ids = list()
+        
+        print "parsing documents..."
     
         for doc in docs:
             phrases = parse(doc, self.sequencer)
             id = self._record_document(doc, phrases)
             new_doc_ids.append(id)
+            
+        print "uploading documents..."
         
         self.sequencer.upload_new_phrases()
         self._upload_new_documents()
+        
+        print "computing similarities..."
     
         self._compute_similarities(new_doc_ids)
 
@@ -95,9 +101,15 @@ class DocumentIngester(object):
         
         docs = self.corpus.get_all_docs()
     
+        i = 0
+    
         for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
             similarity = jaccard(docs[x], docs[y])
             sim_writer.writerow([self.corpus.id, x, y, similarity])
+            
+            i += 1
+            if i % 1000 == 0:
+                sys.stdout.write('.')
         
         sim_file.flush()
         sim_file.seek(0)
