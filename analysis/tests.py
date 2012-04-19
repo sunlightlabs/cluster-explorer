@@ -270,6 +270,16 @@ class TestRealData(DBTestCase):
         c = connection.cursor()
         c.execute('select count(*) from documents')
         self.assertEqual(1, c.fetchone()[0])
+        
+    def test_duplicated_phrases(self):
+        doc = 'The same sentence. The same sentence. A different sentence. The SAME sentence.'
+
+        i = DocumentIngester(self.corpus)
+        
+        self.assertEqual([0, 1], parse(doc, i.sequencer))
+        
+        i.ingest([doc])
+
 
 if __name__ == '__main__':
     unittest.main()
