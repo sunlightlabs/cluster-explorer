@@ -1,6 +1,7 @@
 
 import tempfile
 import csv
+import sys
 
 from parser import parse
 from phrases import PhraseSequencer
@@ -109,8 +110,9 @@ class DocumentIngester(object):
                 sim_writer.writerow([self.corpus.id, x, y, similarity])
             
             i += 1
-            if i % 1000 == 0:
+            if i % 10000000 == 0:
                 sys.stdout.write('.')
+                sys.stdout.flush()
         
         sim_file.flush()
         sim_file.seek(0)
