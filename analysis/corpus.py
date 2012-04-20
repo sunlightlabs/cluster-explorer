@@ -30,15 +30,14 @@ class Corpus(object):
     
     def get_all_docs(self):
         self.cursor.execute("""
-            select document_id, array_agg(phrase_id)
+            select document_id, coalesce(phrases, ARRAY[]::integer[])
             from documents
             left join (
-                select document_id, phrase_id
+                select document_id, array_agg(phrase_id order by phrase_id) as phrases
                 from phrase_occurrences
                 where
                     corpus_id = %s
-                order by document_id, phrase_id) x using (document_id)
-            group by document_id
+                group by document_id) x using (document_id)
         """, [self.id])
         
         return dict(self.cursor.fetchall())

@@ -66,15 +66,26 @@ class TestParser(DBTestCase):
     def test_basic(self):
         t1 = "This is a basic text. Two sentences. Maybe three?"
         t2 = "Two sentences. Maybe...three? this is a basic text."
-        s = PhraseSequencer(Corpus())
+        s = PhraseSequencer(self.corpus)
         
         p1 = parse(t1, s)
         p2 = parse(t2, s)
         
         self.assertEqual([0, 1, 2], p1)
         self.assertEqual([0, 1, 2], p2)
-       
         
+    def test_empty(self):
+        s = PhraseSequencer(self.corpus)
+        c = connection.cursor()
+        
+        p = parse('', s)
+        
+        self.assertEqual([], p)
+        
+        c.execute('select count(*) from phrases')
+        self.assertEqual(0, c.fetchone()[0])
+
+ 
 class TestDocumentIngester(DBTestCase):
     
     def test_ingester(self):
@@ -118,23 +129,22 @@ class TestDocumentIngester(DBTestCase):
         c.execute("select count(*) from phrase_occurrences")
         self.assertEqual(7, c.fetchone()[0])
         
-    def test_queries(self):
-        self.test_ingester()
+    def test_get_all_docs(self):
+        i = DocumentIngester(self.corpus)
+        s = PhraseSequencer(self.corpus)
+
+        i.ingest([
+            'This document has three sentences. One of which matches. Two of which do not.',
+            'This document has only two sentences. One of which matches.',
+            'This document has only two sentences. Only one of which is new.',
+            ''
+        ])
         
         c = connection.cursor()
-        c.execute("""
-            select document_id, array_agg(phrase_id)
-            from (
-                select document_id, phrase_id
-                from phrase_occurrences
-                where
-                    corpus_id = %s
-                order by document_id, phrase_id) x
-            group by document_id
-            order by document_id
-        """, [self.corpus.id])
+        c.execute('select count(*) from documents')
+        self.assertEqual(4, c.fetchone()[0])
         
-        self.assertEqual([(0, [0, 1, 2]), (1, [1, 3]), (2, [3, 4])], c.fetchall())
+        self.assertEqual(dict([(0, [0, 1, 2]), (1, [1, 3]), (2, [3, 4]), [3, []]]), self.corpus.get_all_docs())
 
     def test_similarities(self):
         
