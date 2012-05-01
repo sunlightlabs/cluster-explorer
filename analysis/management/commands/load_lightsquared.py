@@ -1,13 +1,17 @@
 from datetime import datetime
 import json
+from optparse import make_option
 
 from django.db import transaction
 from django.core.management.base import BaseCommand
 
 from analysis.corpus import Corpus
 from analysis.ingestion import DocumentIngester
+from analysis.parser import ngram_parser
+
 
 class Command(BaseCommand):
+    option_list = BaseCommand.option_list + (make_option("-n", "--ngrams", dest="ngrams"),)
     
     def handle(self, ls_docs_path, **options):
         docs = list()
@@ -20,7 +24,10 @@ class Command(BaseCommand):
 
         with transaction.commit_on_success():
             c = Corpus()
-            i = DocumentIngester(c)
+            if 'ngrams' in options:
+                i = DocumentIngester(c, parser=ngram_parser(int(options['ngrams'])))
+            else:
+                i = DocumentIngester(c)
             i.ingest(cleaned_docs)
 
         print "Finished processing at %s" % datetime.now()

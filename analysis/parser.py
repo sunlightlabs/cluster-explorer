@@ -25,6 +25,10 @@ def sentence_parse(text, sequencer):
     return sorted(set(phrase_ids))
 
 
+def ngram_parser(n):
+    return lambda text, sequencer: ngram_parse(text, n, sequencer)
+
+
 def ngram_parse(text, n, sequencer):
     normalized_text = re.sub('\W', ' ', text.lower())
     split_text = normalized_text.split()
