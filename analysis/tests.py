@@ -5,7 +5,7 @@ from django.db import connection, transaction
 
 from ingestion import *
 from phrases import PhraseSequencer
-from parser import parse
+from parser import sentence_parse, ngram_parse
 from sql_utils import execute_file
 from corpus import Corpus
 
@@ -68,8 +68,8 @@ class TestParser(DBTestCase):
         t2 = "Two sentences. Maybe...three? this is a basic text."
         s = PhraseSequencer(self.corpus)
         
-        p1 = parse(t1, s)
-        p2 = parse(t2, s)
+        p1 = sentence_parse(t1, s)
+        p2 = sentence_parse(t2, s)
         
         self.assertEqual([0, 1, 2], p1)
         self.assertEqual([0, 1, 2], p2)
@@ -78,12 +78,42 @@ class TestParser(DBTestCase):
         s = PhraseSequencer(self.corpus)
         c = connection.cursor()
         
-        p = parse('', s)
+        p = sentence_parse('', s)
         
         self.assertEqual([], p)
         
         c.execute('select count(*) from phrases')
         self.assertEqual(0, c.fetchone()[0])
+        
+    def test_ngrams(self):
+        s = PhraseSequencer(self.corpus)
+        t1 = "One simple sentence. With punctuation."
+        t2 = "One Simple sentence--with punctuation?"
+        
+        p1_1 = ngram_parse(t1, 1, s)
+        p2_1 = ngram_parse(t2, 1, s)
+        
+        self.assertEqual([0, 1, 2, 3, 4], p1_1)
+        self.assertEqual(p1_1, p2_1)
+        
+        p1_3 = ngram_parse(t1, 3, s)
+        p2_3 = ngram_parse(t2, 3, s)
+        
+        self.assertEqual([5, 6, 7], p1_3)
+        self.assertEqual(p1_3, p2_3)
+        
+        p1_5 = ngram_parse(t1, 5, s)
+        p2_5 = ngram_parse(t2, 5, s)
+        
+        self.assertEqual([8], p1_5)
+        self.assertEqual(p1_5, p2_5)
+        
+        p1_6 = ngram_parse(t1, 6, s)
+        p2_6 = ngram_parse(t2, 6, s)
+        
+        self.assertEqual([], p1_6)
+        self.assertEqual(p1_6, p2_6)
+        
 
  
 class TestDocumentIngester(DBTestCase):
@@ -95,8 +125,8 @@ class TestDocumentIngester(DBTestCase):
         t1 = 'This document has three sentences. One of which matches. Two of which do not.'
         t2 = 'This document has only two sentences. One of which matches.'
         
-        i._record_document(t1, parse(t1, s))
-        i._record_document(t2, parse(t2, s))
+        i._record_document(t1, sentence_parse(t1, s))
+        i._record_document(t2, sentence_parse(t2, s))
         
         s.upload_new_phrases()
         i._upload_new_documents()
@@ -114,7 +144,7 @@ class TestDocumentIngester(DBTestCase):
         s = PhraseSequencer(self.corpus)
         
         t3 = 'This document has only two sentences. Only one of which is new.'
-        p3 = parse(t3, s)
+        p3 = sentence_parse(t3, s)
         
         doc_id = i._record_document(t3, p3)
         self.assertEqual(2, doc_id)
@@ -286,7 +316,7 @@ class TestRealData(DBTestCase):
 
         i = DocumentIngester(self.corpus)
         
-        self.assertEqual([0, 1], parse(doc, i.sequencer))
+        self.assertEqual([0, 1], sentence_parse(doc, i.sequencer))
         
         i.ingest([doc])
 

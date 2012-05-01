@@ -3,7 +3,7 @@ import tempfile
 import csv
 import sys
 
-from parser import parse
+from parser import sentence_parse
 from phrases import PhraseSequencer
 from cluster.ngrams import jaccard
 from corpus import Corpus
@@ -11,8 +11,9 @@ from corpus import Corpus
 
 class DocumentIngester(object):
     
-    def __init__(self, corpus):
+    def __init__(self, corpus, parser=sentence_parse):
         self.corpus = corpus
+        self.parser = parser
         
         max_doc_id = corpus.get_max_doc_id()
         self.next_id = max_doc_id + 1 if max_doc_id is not None else 0
@@ -69,7 +70,7 @@ class DocumentIngester(object):
         print "parsing documents..."
     
         for doc in docs:
-            phrases = parse(doc, self.sequencer)
+            phrases = self.parser.__call__(doc, self.sequencer)
             id = self._record_document(doc, phrases)
             new_doc_ids.append(id)
             
