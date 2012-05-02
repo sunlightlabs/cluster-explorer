@@ -1,6 +1,8 @@
 
 from django.db import connection
 
+from partition import Partition
+
 
 class Corpus(object):
     
@@ -103,6 +105,25 @@ class Corpus(object):
         """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
         
         return self.cursor.fetchone()
+
+    def get_clusters(self, min_similarity):
+        self.cursor.execute("""
+                select low_document_id, high_document_id
+                from similarities
+                where
+                    corpus_id = %(corpus_id)s
+                    and similarity >= %(min_similarity)s
+        """, dict(corpus_id=self.id, min_similarity=min_similarity))
+
+        edges = self.cursor.fetchall()
+        vertices = set([x for (x, y) in edges] + [y for (x, y) in edges])
+        
+        partition = Partition(vertices)
+        
+        for (x, y) in edges:
+            partition.merge(x, y)
+            
+        return partition.sets()
 
     # TODO: shouldn't this return results sorted by similarity?
     def similar_docs(self, doc_id, min_similarity=0.5):
