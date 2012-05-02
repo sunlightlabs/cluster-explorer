@@ -45,11 +45,72 @@ class Corpus(object):
     def get_all_phrases(self):
         self.cursor.execute("select phrase_text, phrase_id from phrases where corpus_id = %s", [self.id])
         return dict(self.cursor)
+        
+    def get_common_phrases(self, limit=10):
+        self.cursor.execute("""
+            select phrase_id, phrase_text, count(distinct document_id)
+            from phrase_occurrences
+            inner join phrases using (corpus_id, phrase_id)
+            where
+                corpus_id = %s
+            group by phrase_id, phrase_text
+            order by count(distinct document_id) desc
+            limit %s
+        """, [self.id, limit])
+        
+        return self.cursor.fetchall()
 
+    def get_docs_containing_phrase(self, phrase_id):
+        self.cursor.execute("""
+            select document_id, substring(text for 1000)
+            from documents
+            inner join phrase_occurrences using (corpus_id, document_id)
+            where
+                corpus_id = %s
+                and phrase_id = %s
+            group by document_id, substring(text for 1000)
+            order by document_id
+        """, [self.id, phrase_id])
+        
+        return self.cursor.fetchall()
+        
+    def get_centroid_doc(self, doc_ids):
+        # SQL doesn't support empty lists with IN operator, so check here to avoid SQL error
+        if not doc_ids:
+            return None
+            
+        self.cursor.execute("""
+            with included_sims as (
+                select low_document_id, high_document_id, similarity
+                from similarities
+                where
+                    corpus_id = %(corpus_id)s
+                    and low_document_id in %(doc_ids)s
+                    and high_document_id in %(doc_ids)s
+            )
+            select document_id, text
+            from (
+                select low_document_id as document_id, similarity from included_sims
+                union all
+                select high_document_id, similarity from included_sims
+            ) x
+            inner join documents using (document_id)
+            where
+                documents.corpus_id = %(corpus_id)s
+            group by document_id, text
+            order by sum(similarity) desc
+            limit 1
+        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
+        
+        return self.cursor.fetchone()
+
+    # TODO: shouldn't this return results sorted by similarity?
     def similar_docs(self, doc_id, min_similarity=0.5):
         """Return list of documents (doc IDs) ranked by similarity to given doc"""
 
         self.cursor.execute("""
+            select doc_id, similarity
+            from (
                 select high_document_id as doc_id, similarity
                 from similarities
                 where
@@ -63,6 +124,8 @@ class Corpus(object):
                     corpus_id = %(corpus_id)s
                     and high_document_id = %(doc_id)s
                     and similarity >= %(min_similarity)s
+            ) x
+            order by similarity desc
         """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
 
         return self.cursor.fetchall()
