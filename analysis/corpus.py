@@ -2,6 +2,7 @@
 from django.db import connection
 
 from partition import Partition
+from cluster.ngrams import jaccard
 
 
 class Corpus(object):
@@ -105,6 +106,37 @@ class Corpus(object):
         """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
         
         return self.cursor.fetchone()
+        
+    def get_representative_phrases(self, doc_ids, limit=10):
+        if not doc_ids:
+            return []
+        
+        sorted_doc_ids = sorted(doc_ids)
+        
+        # note: this query is pulling back the text for all phrases,
+        # even though only `limit` will be needed. If this is slow
+        # may be faster to run a second query to pull back only
+        # the text of the final few phrases.
+        self.cursor.execute("""
+            with candidate_phrases as (
+                    select corpus_id, phrase_id
+                    from phrase_occurrences
+                    where
+                        corpus_id = %(corpus_id)s
+                        and document_id in %(doc_ids)s
+                    group by corpus_id, phrase_id
+                )
+            select phrase_id, phrase_text, array_agg(document_id order by document_id)
+            from candidate_phrases
+            inner join phrase_occurrences using (corpus_id, phrase_id)
+            inner join phrases using (corpus_id, phrase_id)
+            group by phrase_id, phrase_text
+        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids), limit=limit))
+        
+        weighted_phrase_sets = [(phrase_id, jaccard(docs_with_phrase, sorted_doc_ids), text) for (phrase_id, text, docs_with_phrase) in self.cursor.fetchall()]
+        weighted_phrase_sets.sort(key=lambda (id, score, text): score, reverse=True)
+        
+        return weighted_phrase_sets[:limit]
 
     def get_clusters(self, min_similarity):
         self.cursor.execute("""
@@ -125,7 +157,6 @@ class Corpus(object):
             
         return partition.sets()
 
-    # TODO: shouldn't this return results sorted by similarity?
     def similar_docs(self, doc_id, min_similarity=0.5):
         """Return list of documents (doc IDs) ranked by similarity to given doc"""
 
@@ -186,3 +217,4 @@ class Corpus(object):
         """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
         
         return dict(self.cursor)
+
