@@ -5,7 +5,7 @@ from django.db import connection, transaction
 
 from ingestion import *
 from phrases import PhraseSequencer
-from parser import sentence_parse, ngram_parse
+from parser import sentence_parse, ngram_parse, sentence_boundaries, sentence_indexed_parse
 from sql_utils import execute_file
 from corpus import Corpus
 
@@ -114,7 +114,39 @@ class TestParser(DBTestCase):
         self.assertEqual([], p1_6)
         self.assertEqual(p1_6, p2_6)
         
+class TestIndexingParser(DBTestCase):
+    
+    def test_sentence_tokenize(self):
+        t = ''
+        self.assertEqual([], sentence_boundaries(t))
+        
+        t = '   '
+        self.assertEqual([], sentence_boundaries(t))
 
+        t = 'A simple test case. Of two sentences.'
+        self.assertEqual([(0, 19), (20, 37)], sentence_boundaries(t))
+        
+        t = 'A simple test case. \t \t \n Of two sentences.'
+        self.assertEqual([(0, 19), (26, 43)], sentence_boundaries(t))
+
+    def test_sentence_indexed_parse(self):
+        s = PhraseSequencer(self.corpus)
+
+        t = ''
+        self.assertEqual([], sentence_indexed_parse(t, s))
+
+        t = '   '
+        self.assertEqual([], sentence_indexed_parse(t, s))
+
+        t = 'A simple test case. Of two sentences.'
+        self.assertEqual([(0, [(0, 19)]), (1, [(20, 37)])], sentence_indexed_parse(t, s))
+
+        t = 'A simple test case. \t \t \n Of two sentences.'
+        self.assertEqual([(0, [(0, 19)]), (1, [(26, 43)])], sentence_indexed_parse(t, s))
+        
+        t = 'of two sentences. of two sentences?'
+        self.assertEqual([(1, [(0, 17), (18, 35)])], sentence_indexed_parse(t, s))
+        
  
 class TestDocumentIngester(DBTestCase):
     

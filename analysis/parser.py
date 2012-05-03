@@ -1,21 +1,16 @@
 
-
+from collections import defaultdict
 import nltk.data
 import re
 
-sentence_breaker = nltk.data.load('tokenizers/punkt/english.pickle')
-
-def break_sentences(text):
-    return sentence_breaker.tokenize(text)
-
+_sentence_breaker = nltk.data.load('tokenizers/punkt/english.pickle')
 
 _non_words = re.compile('\W+')
 def normalize(token):
-    return re.sub(_non_words, '', token).lower()
-
+    return re.sub(_non_words, ' ', token).lower()
 
 def sentence_parse(text, sequencer):
-    sentences = [s for s in break_sentences(text) if len(s) < 1000] # long sentences are probably parse errors
+    sentences = [s for s in _sentence_breaker.tokenize(text) if len(s) < 1000] # long sentences are probably parse errors
     phrase_ids = list()
     for sentence in sentences:
         normalized = normalize(sentence)
@@ -28,7 +23,6 @@ def sentence_parse(text, sequencer):
 def ngram_parser(n):
     return lambda text, sequencer: ngram_parse(text, n, sequencer)
 
-
 def ngram_parse(text, n, sequencer):
     normalized_text = re.sub('\W', ' ', text.lower())
     split_text = normalized_text.split()
@@ -39,3 +33,28 @@ def ngram_parse(text, n, sequencer):
         phrase_ids.append(sequencer.sequence(" ".join(split_text[i:i+n])))
     
     return sorted(set(phrase_ids))
+
+
+def sentence_boundaries(text):
+    token_indexes = list()
+    start = 0
+    end = 0
+    for t in _sentence_breaker.tokenize(text):
+        start = end + text[end:].find(t)
+        end = start + len(t)
+        if t.strip() != '' and len(t) < 1000:
+            token_indexes.append((start, end))
+    
+    return token_indexes
+    
+def sentence_indexed_parse(text, sequencer):
+    phrase_map = defaultdict(list)
+    for (start, end) in sentence_boundaries(text):
+        normalized = normalize(text[start:end])
+        if normalized != '':
+            phrase_map[sequencer.sequence(normalized)].append((start, end))
+
+    phrases = phrase_map.items()
+    phrases.sort(key=lambda (id, indexes): id)
+    
+    return phrases
