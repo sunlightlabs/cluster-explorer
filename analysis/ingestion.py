@@ -3,7 +3,7 @@ import tempfile
 import csv
 import sys
 
-from parser import sentence_parse
+from parser import sentence_indexed_parse
 from phrases import PhraseSequencer
 from cluster.ngrams import jaccard
 from corpus import Corpus
@@ -11,7 +11,7 @@ from corpus import Corpus
 
 class DocumentIngester(object):
     
-    def __init__(self, corpus, parser=sentence_parse):
+    def __init__(self, corpus, parser=sentence_indexed_parse):
         self.corpus = corpus
         self.parser = parser
         
@@ -34,8 +34,9 @@ class DocumentIngester(object):
         
         self.document_writer.writerow([self.corpus.id, doc_id, text])
         
-        for phrase_id in phrases:
-            self.occurrence_writer.writerow([self.corpus.id, doc_id, phrase_id])
+        for (phrase_id, indexes) in phrases:
+            formatted_indexes = '{%s}' % ", ".join(['"(%s, %s)"' % (start, end) for (start, end) in indexes])
+            self.occurrence_writer.writerow([self.corpus.id, doc_id, phrase_id, formatted_indexes])
 
         return doc_id 
         

@@ -23,6 +23,11 @@ def sentence_parse(text, sequencer):
 def ngram_parser(n):
     return lambda text, sequencer: ngram_parse(text, n, sequencer)
 
+# a fake implementation--returns empty indexes
+def indexed_ngram_parser(n):
+    return lambda text, sequencer: [(id, []) for id in ngram_parse(text, n, sequencer)]
+
+
 def ngram_parse(text, n, sequencer):
     normalized_text = re.sub('\W', ' ', text.lower())
     split_text = normalized_text.split()
@@ -33,6 +38,7 @@ def ngram_parse(text, n, sequencer):
         phrase_ids.append(sequencer.sequence(" ".join(split_text[i:i+n])))
     
     return sorted(set(phrase_ids))
+
 
 
 def sentence_boundaries(text):

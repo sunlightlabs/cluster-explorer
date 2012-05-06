@@ -157,8 +157,8 @@ class TestDocumentIngester(DBTestCase):
         t1 = 'This document has three sentences. One of which matches. Two of which do not.'
         t2 = 'This document has only two sentences. One of which matches.'
         
-        i._record_document(t1, sentence_parse(t1, s))
-        i._record_document(t2, sentence_parse(t2, s))
+        i._record_document(t1, sentence_indexed_parse(t1, s))
+        i._record_document(t2, sentence_indexed_parse(t2, s))
         
         s.upload_new_phrases()
         i._upload_new_documents()
@@ -176,11 +176,11 @@ class TestDocumentIngester(DBTestCase):
         s = PhraseSequencer(self.corpus)
         
         t3 = 'This document has only two sentences. Only one of which is new.'
-        p3 = sentence_parse(t3, s)
+        p3 = sentence_indexed_parse(t3, s)
         
         doc_id = i._record_document(t3, p3)
         self.assertEqual(2, doc_id)
-        self.assertEqual([3, 4], p3)
+        self.assertEqual([(3, [(0, 37)]), (4, [(38, 63)])], p3)
         
         s.upload_new_phrases()
         i._upload_new_documents()
@@ -348,7 +348,7 @@ class TestRealData(DBTestCase):
 
         i = DocumentIngester(self.corpus)
         
-        self.assertEqual([0, 1], sentence_parse(doc, i.sequencer))
+        self.assertEqual([(0, [(0, 18), (19, 37), (60, 78)]), (1, [(38, 59)])], sentence_indexed_parse(doc, i.sequencer))
         
         i.ingest([doc])
 
