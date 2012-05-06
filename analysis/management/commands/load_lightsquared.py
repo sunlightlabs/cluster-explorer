@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
         with transaction.commit_on_success():
             c = Corpus()
-            if 'ngrams' in options:
+            if options.get('ngrams'):
                 i = DocumentIngester(c, parser=ngram_parser(int(options['ngrams'])))
             else:
                 i = DocumentIngester(c)
