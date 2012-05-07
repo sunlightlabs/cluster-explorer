@@ -12,10 +12,18 @@ from corpus import Corpus
 class DocumentIngester(object):
     
     def __init__(self, corpus, parser=sentence_indexed_parse):
+        """Return a new ingester for the corpus.
+        
+        parser may be sentence_indexed_parse or ngram_indexed_parser(n)
+        
+        Client must insure that no other ingester is running
+        concurrently on the same corpus.
+        """
+        
         self.corpus = corpus
         self.parser = parser
         
-        max_doc_id = corpus.get_max_doc_id()
+        max_doc_id = corpus.max_doc_id()
         self.next_id = max_doc_id + 1 if max_doc_id is not None else 0
         
         self.document_file = tempfile.TemporaryFile()
@@ -102,7 +110,7 @@ class DocumentIngester(object):
         sim_file = tempfile.TemporaryFile()
         sim_writer = csv.writer(sim_file)
         
-        docs = self.corpus.get_all_docs()
+        docs = self.corpus.all_docs()
     
         i = 0
     
@@ -121,7 +129,3 @@ class DocumentIngester(object):
         self.corpus.upload_csv(sim_file, 'similarities')
         sim_file.close()
 
-        
-    
-    
-        

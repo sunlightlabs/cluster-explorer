@@ -24,7 +24,7 @@ def ngram_parser(n):
     return lambda text, sequencer: ngram_parse(text, n, sequencer)
 
 # a fake implementation--returns empty indexes
-def indexed_ngram_parser(n):
+def ngram_indexed_parser(n):
     return lambda text, sequencer: [(id, []) for id in ngram_parse(text, n, sequencer)]
 
 

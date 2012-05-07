@@ -10,10 +10,10 @@ class PhraseSequencer(object):
 
         self.corpus = corpus
         
-        max_phrase_id = self.corpus.get_max_phrase_id()
+        max_phrase_id = self.corpus.max_phrase_id()
         self.next_id = max_phrase_id + 1 if max_phrase_id is not None else 0
         
-        self.phrase_map = self.corpus.get_all_phrases()
+        self.phrase_map = self.corpus.all_phrases()
         
         self.new_phrase_file = tempfile.TemporaryFile()
         self.writer = csv.writer(self.new_phrase_file)

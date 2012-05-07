@@ -8,6 +8,11 @@ from cluster.ngrams import jaccard
 class Corpus(object):
     
     def __init__(self, corpus_id=None):
+        """Return wrapper to all database access on the corpus.
+        
+        If no corpus_id given then new empty corpus created.
+        """
+        
         self.cursor = connection.cursor()
 
         if corpus_id is None:
@@ -15,14 +20,16 @@ class Corpus(object):
             self.id = self.cursor.fetchone()[0]
         else:
             self.id = corpus_id
+    
+    ### methods used by DocumentIngester ###    
         
-    def get_max_doc_id(self):
+    def max_doc_id(self):
         self.cursor.execute("select max(document_id) from documents where corpus_id = %s", [self.id])
         result = self.cursor.fetchone()
         
         return result[0] if result else None
         
-    def get_max_phrase_id(self):
+    def max_phrase_id(self):
         self.cursor.execute("select max(phrase_id) from phrases where corpus_id = %s", [self.id])
         result = self.cursor.fetchone()
         
@@ -31,7 +38,7 @@ class Corpus(object):
     def upload_csv(self, file, tablename):
         self.cursor.copy_expert("copy %s from STDIN csv" % tablename, file)
     
-    def get_all_docs(self):
+    def all_docs(self):
         self.cursor.execute("""
             select document_id, coalesce(phrases, ARRAY[]::integer[])
             from documents
@@ -45,11 +52,21 @@ class Corpus(object):
         
         return dict(self.cursor.fetchall())
     
-    def get_all_phrases(self):
+    def all_phrases(self):
         self.cursor.execute("select phrase_text, phrase_id from phrases where corpus_id = %s", [self.id])
         return dict(self.cursor)
+    
+    
+    ### methods used by clients ###
+    
+    # todo: return example of each phrase occurrence?
+    def common_phrases(self, limit=10):
+        """Return the most frequent phrases in corpus.
         
-    def get_common_phrases(self, limit=10):
+        Result is a list of (phrase ID, phrase text, count),
+        sorted by count.
+        """
+        
         self.cursor.execute("""
             select phrase_id, phrase_text, count(distinct document_id)
             from phrase_occurrences
@@ -63,7 +80,14 @@ class Corpus(object):
         
         return self.cursor.fetchall()
 
-    def get_docs_containing_phrase(self, phrase_id):
+    # todo: should return phrase index
+    def docs_containing_phrase(self, phrase_id):
+        """Return all documents containing the given phrase.
+        
+        Result is a list of (document ID, document text preview),
+        sorted by document ID.
+        """
+        
         self.cursor.execute("""
             select document_id, substring(text for 1000)
             from documents
@@ -77,7 +101,15 @@ class Corpus(object):
         
         return self.cursor.fetchall()
         
-    def get_centroid_doc(self, doc_ids):
+    def centroid_doc(self, doc_ids):
+        """Return the document from given document set with minimum average
+        distance to other documents in the set.
+        
+        Document set may be any arbitrary collection of IDs from the corpus.
+        
+        Result is (document ID, document text).
+        """
+        
         # SQL doesn't support empty lists with IN operator, so check here to avoid SQL error
         if not doc_ids:
             return None
@@ -106,8 +138,17 @@ class Corpus(object):
         """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
         
         return self.cursor.fetchone()
+    
+    # todo: return example of each phrase occurrence?
+    def representative_phrases(self, doc_ids, limit=10):
+        """Return phrases representative of given set of documents.
         
-    def get_representative_phrases(self, doc_ids, limit=10):
+        'Representative' means that the phrases are more common
+        within the document set than they are in the corpus as a whole.
+        
+        Result is list of (phrase ID, phrase text, [document IDs in which phrase occurs]).
+        """
+        
         if not doc_ids:
             return []
         
@@ -138,7 +179,16 @@ class Corpus(object):
         
         return weighted_phrase_sets[:limit]
 
-    def get_clusters(self, min_similarity):
+    def clusters(self, min_similarity):
+        """Return clustering of subset of corpus with similarity above given threshold.
+        
+        Two documents are clustered if they are linked through a sequence of documents
+        with similarity above the given threshold. Put another way, the clustering is
+        the set of connected components of the similarity graph above the cutoff.
+        
+        Result is a list of list of document IDs.
+        """
+        
         self.cursor.execute("""
                 select low_document_id, high_document_id
                 from similarities
@@ -158,7 +208,10 @@ class Corpus(object):
         return partition.sets()
 
     def similar_docs(self, doc_id, min_similarity=0.5):
-        """Return list of documents (doc IDs) ranked by similarity to given doc"""
+        """Return all documents similar to the given document.
+        
+        Result is list of (document ID, similarity), sorted by similarity.
+        """
 
         self.cursor.execute("""
             select doc_id, similarity
@@ -181,8 +234,21 @@ class Corpus(object):
         """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
 
         return self.cursor.fetchall()
-        
+    
+    # todo: return phrase indexes
+    # todo: should this take an arbitrary document set, rather than similarity cutoff?
     def phrase_overlap(self, doc_id, min_similarity):
+        """Return the number of times each phrase in the given document
+        is used in similar documents.
+        
+        Used in conjunction with similar_docs() to get the document count,
+        this can give the portion of documents in the set that contain each phrase.
+        By calling repeatedly with different similarity cutoffs, the user can see
+        at what point a particular phrase stops being common in the set.
+        
+        Returns list of (phrase ID, count), sorted by count.
+        """
+        
         self.cursor.execute("""
             with
                 similar_documents as (
