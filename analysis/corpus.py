@@ -1,4 +1,5 @@
 
+import psycopg2.extras
 from django.db import connection
 
 from partition import Partition
@@ -14,6 +15,7 @@ class Corpus(object):
         """
         
         self.cursor = connection.cursor()
+        psycopg2.extras.register_composite('int_bounds', self.cursor.cursor.cursor) # Django cursor is two wrappers around psycopg2 cursor
 
         if corpus_id is None:
             self.cursor.execute("insert into corpora default values returning corpus_id")
@@ -59,7 +61,6 @@ class Corpus(object):
     
     ### methods used by clients ###
     
-    # todo: return example of each phrase occurrence?
     def common_phrases(self, limit=10):
         """Return the most frequent phrases in corpus.
         
@@ -68,34 +69,42 @@ class Corpus(object):
         """
         
         self.cursor.execute("""
-            select phrase_id, phrase_text, count(distinct document_id)
-            from phrase_occurrences
-            inner join phrases using (corpus_id, phrase_id)
-            where
-                corpus_id = %s
-            group by phrase_id, phrase_text
-            order by count(distinct document_id) desc
-            limit %s
-        """, [self.id, limit])
+            select phrase_id as found_phrase, count,
+                (select substring(text for (indexes[1].end - indexes[1].start) from indexes[1].start + 1)
+                from phrase_occurrences i
+                inner join documents using (corpus_id, document_id)
+                where
+                    corpus_id = %(corpus_id)s
+                    and x.phrase_id = i.phrase_id
+                limit 1) as example_phrase
+            from (
+                select phrase_id, count(distinct document_id)
+                from phrase_occurrences o
+                inner join phrases using (corpus_id, phrase_id)
+                where
+                    corpus_id = %(corpus_id)s
+                group by phrase_id, phrase_text
+                order by count(distinct document_id) desc
+                limit %(limit)s) x;
+        """, dict(corpus_id=self.id, limit=limit))
         
         return self.cursor.fetchall()
 
-    # todo: should return phrase index
     def docs_containing_phrase(self, phrase_id):
         """Return all documents containing the given phrase.
         
-        Result is a list of (document ID, document text preview),
+        Result is a list of (document ID, (start offset, end offset), document text preview),
         sorted by document ID.
         """
         
         self.cursor.execute("""
-            select document_id, substring(text for 1000)
+            select document_id, indexes, substring(text for 1000)
             from documents
             inner join phrase_occurrences using (corpus_id, document_id)
             where
                 corpus_id = %s
                 and phrase_id = %s
-            group by document_id, substring(text for 1000)
+            group by document_id, indexes, substring(text for 1000)
             order by document_id
         """, [self.id, phrase_id])
         
