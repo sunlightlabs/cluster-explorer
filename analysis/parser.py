@@ -45,7 +45,7 @@ def sentence_boundaries(text):
     token_indexes = list()
     start = 0
     end = 0
-    for t in _sentence_breaker.tokenize(text):
+    for t in _sentence_breaker.tokenize(text.strip()):
         start = end + text[end:].find(t)
         end = start + len(t)
         if t.strip() != '' and len(t) < 1000:

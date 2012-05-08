@@ -141,8 +141,8 @@ class TestIndexingParser(DBTestCase):
         t = 'A simple test case. Of two sentences.'
         self.assertEqual([(0, [(0, 19)]), (1, [(20, 37)])], sentence_indexed_parse(t, s))
 
-        t = 'A simple test case. \t \t \n Of two sentences.'
-        self.assertEqual([(0, [(0, 19)]), (1, [(26, 43)])], sentence_indexed_parse(t, s))
+        t = ' \n A simple test case. \t \t \n Of two sentences.\n'
+        self.assertEqual([(0, [(3, 22)]), (1, [(29, 46)])], sentence_indexed_parse(t, s))
         
         t = 'of two sentences. of two sentences?'
         self.assertEqual([(1, [(0, 17), (18, 35)])], sentence_indexed_parse(t, s))
