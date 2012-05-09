@@ -2,32 +2,32 @@
 
 create table corpora (
     corpus_id serial PRIMARY KEY,
+    -- to add: parse type
     metadata hstore
 );
 
 create table documents (
-    corpus_id integer REFERENCES corpora(corpus_id),
+    corpus_id integer REFERENCES corpora(corpus_id) ON DELETE CASCADE,
     document_id integer,
     text text,
+    -- to add: ingestion date
     metadata hstore,
-    PRIMARY KEY (corpus_id, document_id),
-    FOREIGN KEY (corpus_id) REFERENCES corpora (corpus_ID) ON DELETE CASCADE
+    PRIMARY KEY (corpus_id, document_id)
 );
 
 create table phrases (
-    corpus_id integer REFERENCES corpora(corpus_id),
+    corpus_id integer REFERENCES corpora(corpus_id) ON DELETE CASCADE,
     phrase_id integer,
     phrase_text varchar,
     PRIMARY KEY (corpus_id, phrase_id),
-    UNIQUE (corpus_id, phrase_text),
-    FOREIGN KEY (corpus_id) REFERENCES corpora (corpus_ID) ON DELETE CASCADE
+    UNIQUE (corpus_id, phrase_text)
 );
 
 
 create type int_bounds as (start integer, "end" integer);
 
 create table phrase_occurrences (
-    corpus_id integer REFERENCES corpora(corpus_id),
+    corpus_id integer REFERENCES corpora(corpus_id) ON DELETE CASCADE,
     document_id integer,
     phrase_id integer,
     indexes int_bounds[],
@@ -37,7 +37,7 @@ create table phrase_occurrences (
 );
 
 create table similarities (
-    corpus_id integer REFERENCES corpora(corpus_id),
+    corpus_id integer REFERENCES corpora(corpus_id) ON DELETE CASCADE,
     low_document_id integer,
     high_document_id integer,
     similarity real,
