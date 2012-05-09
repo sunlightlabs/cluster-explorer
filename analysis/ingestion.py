@@ -39,7 +39,7 @@ class DocumentIngester(object):
         doc_id = self.next_id
         self.next_id += 1
         
-        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, value)) for (key, value) in metadata.items()])
+        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, value.replace('"', '\\"'))) for (key, value) in metadata.items()])
         self.document_writer.writerow([self.corpus.id, doc_id, text, formatted_metadata])
         
         for (phrase_id, indexes) in phrases:

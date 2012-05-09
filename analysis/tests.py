@@ -352,6 +352,14 @@ class TestRealData(DBTestCase):
         
         i.ingest([doc])
 
+    def test_ingestion_metadata_quoting(self):
+        i = DocumentIngester(self.corpus)
+        
+        doc = dict(text='not important', metadata=dict(title='a "quoted" string'))
+        i.ingest([doc])
+        
+        self.cursor.execute("select metadata -> 'title' from documents")
+        self.assertEqual('a "quoted" string', self.cursor.fetchone()[0])
 
 if __name__ == '__main__':
     unittest.main()
