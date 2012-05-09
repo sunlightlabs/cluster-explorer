@@ -1,15 +1,15 @@
 
 
 create table corpora (
-    corpus_id serial PRIMARY KEY
-    -- plus metadata
+    corpus_id serial PRIMARY KEY,
+    metadata hstore
 );
 
 create table documents (
     corpus_id integer REFERENCES corpora(corpus_id),
     document_id integer,
     text text,
-    -- plus metadata
+    metadata hstore,
     PRIMARY KEY (corpus_id, document_id),
     FOREIGN KEY (corpus_id) REFERENCES corpora (corpus_ID) ON DELETE CASCADE
 );

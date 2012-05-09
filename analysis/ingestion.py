@@ -35,12 +35,12 @@ class DocumentIngester(object):
         self.sequencer = PhraseSequencer(corpus)
         
     
-    def _record_document(self, text, phrases, metadata=None):
-        # some or all of metadata may be explicit parameters
+    def _record_document(self, text, phrases, metadata):
         doc_id = self.next_id
         self.next_id += 1
         
-        self.document_writer.writerow([self.corpus.id, doc_id, text])
+        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, value)) for (key, value) in metadata.items()])
+        self.document_writer.writerow([self.corpus.id, doc_id, text, formatted_metadata])
         
         for (phrase_id, indexes) in phrases:
             formatted_indexes = '{%s}' % ", ".join(['"(%s, %s)"' % (start, end) for (start, end) in indexes])
@@ -79,8 +79,15 @@ class DocumentIngester(object):
         print "parsing documents..."
     
         for doc in docs:
-            phrases = self.parser.__call__(doc, self.sequencer)
-            id = self._record_document(doc, phrases)
+            if isinstance(doc, basestring):
+                text = doc
+                metadata = {}
+            else:
+                text = doc['text']
+                metadata = doc['metadata']
+
+            phrases = self.parser.__call__(text, self.sequencer)
+            id = self._record_document(text, phrases, metadata)
             new_doc_ids.append(id)
             
         print "uploading documents..."

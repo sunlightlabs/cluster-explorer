@@ -8,7 +8,7 @@ from cluster.ngrams import jaccard
 
 class Corpus(object):
     
-    def __init__(self, corpus_id=None):
+    def __init__(self, corpus_id=None, metadata={}):
         """Return wrapper to all database access on the corpus.
         
         If no corpus_id given then new empty corpus created.
@@ -16,9 +16,10 @@ class Corpus(object):
         
         self.cursor = connection.cursor()
         psycopg2.extras.register_composite('int_bounds', self.cursor.cursor.cursor) # Django cursor is two wrappers around psycopg2 cursor
+        psycopg2.extras.register_hstore(self.cursor.cursor.cursor)
 
         if corpus_id is None:
-            self.cursor.execute("insert into corpora default values returning corpus_id")
+            self.cursor.execute("insert into corpora (metadata) values (%s) returning corpus_id", [metadata])
             self.id = self.cursor.fetchone()[0]
         else:
             self.id = corpus_id

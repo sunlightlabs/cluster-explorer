@@ -157,8 +157,8 @@ class TestDocumentIngester(DBTestCase):
         t1 = 'This document has three sentences. One of which matches. Two of which do not.'
         t2 = 'This document has only two sentences. One of which matches.'
         
-        i._record_document(t1, sentence_indexed_parse(t1, s))
-        i._record_document(t2, sentence_indexed_parse(t2, s))
+        i._record_document(t1, sentence_indexed_parse(t1, s), {})
+        i._record_document(t2, sentence_indexed_parse(t2, s), {})
         
         s.upload_new_phrases()
         i._upload_new_documents()
@@ -178,7 +178,7 @@ class TestDocumentIngester(DBTestCase):
         t3 = 'This document has only two sentences. Only one of which is new.'
         p3 = sentence_indexed_parse(t3, s)
         
-        doc_id = i._record_document(t3, p3)
+        doc_id = i._record_document(t3, p3, {})
         self.assertEqual(2, doc_id)
         self.assertEqual([(3, [(0, 37)]), (4, [(38, 63)])], p3)
         
