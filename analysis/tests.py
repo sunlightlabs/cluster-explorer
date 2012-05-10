@@ -363,7 +363,7 @@ class TestRealData(DBTestCase):
 
     def test_bad_encoding(self):
         doc = 'This has a bad \xe2 character.'
-        metadata = {'title': "Even the title is \xe2 bad."}
+        metadata = {u'title': "Even the title is \xe2 bad."}
         
         i = DocumentIngester(self.corpus)
         i.ingest([{'text': doc, 'metadata': metadata}])

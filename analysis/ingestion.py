@@ -48,7 +48,7 @@ class DocumentIngester(object):
         doc_id = self.next_id
         self.next_id += 1
         
-        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, _encode(value).replace('"', '\\"'))) for (key, value) in metadata.items()])
+        formatted_metadata = ",".join([('"%s"=>"%s"' % (_encode(key), _encode(value).replace('"', '\\"'))) for (key, value) in metadata.items()])
         self.document_writer.writerow([self.corpus.id, doc_id, _encode(text), formatted_metadata])
         
         for (phrase_id, indexes) in phrases:
@@ -85,7 +85,7 @@ class DocumentIngester(object):
         
         new_doc_ids = list()
         
-        print "parsing documents..."
+        print "parsing %s documents..." % len(docs)
     
         for doc in docs:
             if isinstance(doc, basestring):
