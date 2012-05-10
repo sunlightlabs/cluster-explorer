@@ -18,10 +18,10 @@ def load_docket(es_endpoint, docket):
     query = {'size':1000000, 'filter': { 'term': { 'docket_id': docket } } }
     request = urllib2.urlopen(es_endpoint, json.dumps(query))
     results = json.load(request)
-        
+
     for r in results['hits']['hits']:
-        text = "\n".join([file['text'].encode('ascii', 'replace') for file in r['_source']['files'] if len(file['text']) > 0])
-        metadata = dict([(key, str(value)) for (key, value) in r['_source'].items() if key != 'files' and value is not None])
+        text = "\n".join([file['text'] for file in r['_source']['files'] if len(file['text']) > 0])
+        metadata = dict([(key, unicode(value)) for (key, value) in r['_source'].items() if key != 'files' and value is not None])
         docs.append(dict(text=text, metadata=metadata))
     
     return docs

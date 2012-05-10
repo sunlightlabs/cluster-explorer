@@ -361,5 +361,19 @@ class TestRealData(DBTestCase):
         self.cursor.execute("select metadata -> 'title' from documents")
         self.assertEqual('a "quoted" string', self.cursor.fetchone()[0])
 
+    def test_bad_encoding(self):
+        doc = 'This has a bad \xe2 character.'
+        metadata = {'title': "Even the title is \xe2 bad."}
+        
+        i = DocumentIngester(self.corpus)
+        i.ingest([{'text': doc, 'metadata': metadata}])
+        
+        self.cursor.execute("select metadata -> 'title' from documents")
+        self.assertEqual(u'Even the title is \ufffdad.', self.cursor.fetchone()[0])
+        
+        self.cursor.execute("select text from documents")
+        self.assertEqual(u'This has a bad \ufffdharacter.', self.cursor.fetchone()[0])
+
+
 if __name__ == '__main__':
     unittest.main()

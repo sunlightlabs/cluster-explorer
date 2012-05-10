@@ -9,6 +9,15 @@ from cluster.ngrams import jaccard
 from corpus import Corpus
 
 
+def _encode(s):
+    if isinstance(s, str):
+        return unicode(s, 'utf8', 'replace').encode('utf8')
+    elif isinstance(s, unicode):
+        return s.encode('utf8')
+    
+    raise Exception("Document text and metadata must be either string or unicode. Got type %s." % type(s))
+    
+
 class DocumentIngester(object):
     
     def __init__(self, corpus, parser=sentence_indexed_parse):
@@ -39,8 +48,8 @@ class DocumentIngester(object):
         doc_id = self.next_id
         self.next_id += 1
         
-        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, value.replace('"', '\\"'))) for (key, value) in metadata.items()])
-        self.document_writer.writerow([self.corpus.id, doc_id, text, formatted_metadata])
+        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, _encode(value).replace('"', '\\"'))) for (key, value) in metadata.items()])
+        self.document_writer.writerow([self.corpus.id, doc_id, _encode(text), formatted_metadata])
         
         for (phrase_id, indexes) in phrases:
             formatted_indexes = '{%s}' % ", ".join(['"(%s, %s)"' % (start, end) for (start, end) in indexes])
