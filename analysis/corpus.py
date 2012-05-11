@@ -5,6 +5,25 @@ from django.db import connection
 from partition import Partition
 from cluster.ngrams import jaccard
 
+# Django connection is a wrappers around psycopg2 connection,
+# but that wrapped object isn't initialized till a call is made.
+connection.cursor()
+psycopg2.extras.register_composite('int_bounds', connection.connection) 
+psycopg2.extras.register_hstore(connection.connection)
+
+
+def get_corpora_by_metadata(key, value):
+    """Return a list of Corpus objects having the given key and value.
+    
+    For example assuming the corpora were built with 'agency' and 'docket' keys, 
+    passing 'agency' and 'OSHA' would return all OSHA coprora. Passing 'docket' and
+    a docket ID would return a list of a single corpus.
+    """
+
+    c = connection.cursor()
+    c.execute("select corpus_id from corpora where metadata -> %s = %s", [key, value])    
+    return [Corpus(id) for (id,) in c.fetchall()]
+
 
 class Corpus(object):
     
@@ -15,8 +34,6 @@ class Corpus(object):
         """
         
         self.cursor = connection.cursor()
-        psycopg2.extras.register_composite('int_bounds', self.cursor.cursor.cursor) # Django cursor is two wrappers around psycopg2 cursor
-        psycopg2.extras.register_hstore(self.cursor.cursor.cursor)
 
         if corpus_id is None:
             self.cursor.execute("insert into corpora (metadata) values (%s) returning corpus_id", [metadata])
@@ -61,6 +78,33 @@ class Corpus(object):
     
     
     ### methods used by clients ###
+    
+    def doc(self, doc_id):
+        """Return the text and metadata of a given document."""
+        
+        self.cursor.execute("""
+            select text, metadata
+            from documents
+            where
+                corpus_id = %s
+                and document_id = %s
+        """, [self.id, doc_id])
+        
+        (text, metadata) = self.cursor.fetchone()
+        return dict(text=text, metadata=metadata)
+        
+    def docs_by_metadata(self, key, value):
+        """Return IDs of all documents matching the given metadata key/value."""
+        
+        self.cursor.execute("""
+            select document_id
+            from documents
+            where
+                corpus_id = %s
+                and metadata -> %s = %s
+        """, [self.id, key, value])
+
+        return [id for (id,) in self.cursor.fetchall()]
     
     def common_phrases(self, limit=10):
         """Return the most frequent phrases in corpus.
