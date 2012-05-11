@@ -7,7 +7,13 @@ _sentence_breaker = nltk.data.load('tokenizers/punkt/english.pickle')
 
 _non_words = re.compile('\W+')
 def normalize(token):
-    return re.sub(_non_words, ' ', token).lower()
+    words = re.sub(_non_words, ' ', token).lower()
+    
+    # filter phrases that aren't at least half word characters--likely represents non-content
+    if len(words) <= len(token) / 2:
+        return ''
+        
+    return words
 
 def sentence_parse(text, sequencer):
     sentences = [s for s in _sentence_breaker.tokenize(text) if len(s) < 1000] # long sentences are probably parse errors
