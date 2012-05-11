@@ -99,13 +99,13 @@ class Corpus(object):
         """
         
         self.cursor.execute("""
-            select document_id, indexes, substring(text for 1000)
+            select document_id, indexes, substring(text for (indexes[1].end - indexes[1].start) from indexes[1].start + 1) as sample
             from documents
             inner join phrase_occurrences using (corpus_id, document_id)
             where
                 corpus_id = %s
                 and phrase_id = %s
-            group by document_id, indexes, substring(text for 1000)
+            group by document_id, indexes, sample
             order by document_id
         """, [self.id, phrase_id])
         
