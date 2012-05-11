@@ -8,20 +8,20 @@ from cluster.ngrams import jaccard
 # Django connection is a wrappers around psycopg2 connection,
 # but that wrapped object isn't initialized till a call is made.
 connection.cursor()
-psycopg2.extras.register_composite('int_bounds', connection.connection) 
+psycopg2.extras.register_composite('int_bounds', connection.connection)
 psycopg2.extras.register_hstore(connection.connection)
 
 
 def get_corpora_by_metadata(key, value):
     """Return a list of Corpus objects having the given key and value.
     
-    For example assuming the corpora were built with 'agency' and 'docket' keys, 
+    For example assuming the corpora were built with 'agency' and 'docket' keys,
     passing 'agency' and 'OSHA' would return all OSHA coprora. Passing 'docket' and
     a docket ID would return a list of a single corpus.
     """
 
     c = connection.cursor()
-    c.execute("select corpus_id from corpora where metadata -> %s = %s", [key, value])    
+    c.execute("select corpus_id from corpora where metadata -> %s = %s", [key, value])
     return [Corpus(id) for (id,) in c.fetchall()]
 
 
