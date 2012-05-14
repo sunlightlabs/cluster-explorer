@@ -289,52 +289,33 @@ class Corpus(object):
 
         return self.cursor.fetchall()
     
-    # todo: return phrase indexes
-    # todo: should this take an arbitrary document set, rather than similarity cutoff?
-    def phrase_overlap(self, doc_id, min_similarity):
+    def phrase_overlap(self, target_doc_id, doc_set):
         """Return the number of times each phrase in the given document
-        is used in similar documents.
+        is used in the document set.
         
-        Used in conjunction with similar_docs() to get the document count,
-        this can give the portion of documents in the set that contain each phrase.
+        Used in conjunction with similar_docs() or clusters().
         By calling repeatedly with different similarity cutoffs, the user can see
         at what point a particular phrase stops being common in the set.
         
-        Returns list of (phrase ID, count), sorted by count.
+        Returns dictionary of phrase ID -> count & character offset.
         """
         
         self.cursor.execute("""
-            with
-                similar_documents as (
-                        select high_document_id as doc_id, similarity
-                        from similarities
-                        where
-                            corpus_id = %(corpus_id)s
-                            and low_document_id = %(doc_id)s
-                            and similarity >= %(min_similarity)s
-                    union all
-                        select low_document_id as doc_id, similarity
-                        from similarities
-                        where
-                            corpus_id = %(corpus_id)s
-                            and high_document_id = %(doc_id)s
-                            and similarity >= %(min_similarity)s
-                ),
-                phrases_in_target_doc as (
+            with phrases_in_target_doc as (
                     select phrase_id, indexes
                     from phrase_occurrences
                     where
                         corpus_id = %(corpus_id)s
-                        and document_id = %(doc_id)s
+                        and document_id = %(target_doc_id)s
                 )
             select phrase_id, t.indexes, count(*)
             from phrases_in_target_doc t
             left join phrase_occurrences using (phrase_id)
             where
                 corpus_id = %(corpus_id)s
-                and document_id in (select doc_id from similar_documents)
+                and document_id in %(doc_set)s
             group by phrase_id, t.indexes
-        """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
+        """, dict(corpus_id=self.id, target_doc_id=target_doc_id, doc_set=tuple(doc_set)))
         
         return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor])
 

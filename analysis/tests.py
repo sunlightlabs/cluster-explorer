@@ -314,11 +314,11 @@ class TestAnalysis(DBTestCase):
             "There will be two of these."
         ])
 
-        overlap = self.corpus.phrase_overlap(2, 0.2)
-        self.assertEqual({3: 1, 4:1}, overlap)
+        overlap = self.corpus.phrase_overlap(2, [id for (id, _) in self.corpus.similar_docs(2, 0.2)])
+        self.assertEqual({3: {'count': 1L, 'indexes': '{"(0,37)"}'}, 4: {'count': 1L, 'indexes': '{"(38,63)"}'}}, overlap)
         
-        overlap = self.corpus.phrase_overlap(2, 0.4)
-        self.assertEqual({4:1}, overlap)
+        overlap = self.corpus.phrase_overlap(2, [id for (id, _) in self.corpus.similar_docs(2, 0.4)])
+        self.assertEqual({4: {'count': 1L, 'indexes': '{"(38,63)"}'}}, overlap)
 
 class TestRealData(DBTestCase):
 
