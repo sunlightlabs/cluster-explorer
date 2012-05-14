@@ -321,20 +321,20 @@ class Corpus(object):
                             and similarity >= %(min_similarity)s
                 ),
                 phrases_in_target_doc as (
-                    select phrase_id
+                    select phrase_id, indexes
                     from phrase_occurrences
                     where
                         corpus_id = %(corpus_id)s
                         and document_id = %(doc_id)s
                 )
-            select phrase_id, count(*)
-            from phrases_in_target_doc
+            select phrase_id, t.indexes, count(*)
+            from phrases_in_target_doc t
             left join phrase_occurrences using (phrase_id)
             where
                 corpus_id = %(corpus_id)s
                 and document_id in (select doc_id from similar_documents)
-            group by phrase_id
+            group by phrase_id, t.indexes
         """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
         
-        return dict(self.cursor)
+        return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor])
 
