@@ -268,24 +268,25 @@ class Corpus(object):
         """
 
         self.cursor.execute("""
+            with recursive cluster (doc_id) as (
+                    select %(target_doc_id)s
+                union
+                    select case when doc_id = low_document_id then high_document_id else low_document_id end
+                    from similarities
+                    inner join cluster on doc_id = low_document_id or doc_id = high_document_id
+                    where
+                        corpus_id = %(corpus_id)s
+                        and similarity >= %(min_similarity)s
+            )
             select doc_id, similarity
-            from (
-                select high_document_id as doc_id, similarity
-                from similarities
-                where
-                    corpus_id = %(corpus_id)s
-                    and low_document_id = %(doc_id)s
-                    and similarity >= %(min_similarity)s
-            union all
-                select low_document_id as doc_id, similarity
-                from similarities
-                where
-                    corpus_id = %(corpus_id)s
-                    and high_document_id = %(doc_id)s
-                    and similarity >= %(min_similarity)s
-            ) x
+            from cluster
+            inner join similarities on
+                (low_document_id = %(target_doc_id)s and high_document_id = doc_id)
+                or (low_document_id = doc_id and high_document_id = %(target_doc_id)s)
+            where
+                corpus_id = %(corpus_id)s
             order by similarity desc
-        """, dict(corpus_id=self.id, doc_id=doc_id, min_similarity=min_similarity))
+        """, dict(corpus_id=self.id, target_doc_id=doc_id, min_similarity=min_similarity))
 
         return self.cursor.fetchall()
     

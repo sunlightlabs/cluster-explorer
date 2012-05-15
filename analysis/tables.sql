@@ -47,4 +47,7 @@ create table similarities (
     FOREIGN KEY (corpus_id, high_document_id) REFERENCES documents(corpus_id, document_id) ON DELETE CASCADE DEFERRABLE
 );
 
+create index similarities_corpus_low_id on similarities (corpus_id, low_document_id);
+create index similarities_corpus_high_id on similarities (corpus_id, high_document_id);
+
 
