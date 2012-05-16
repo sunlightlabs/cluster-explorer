@@ -10,10 +10,11 @@ class Partition(object):
     def merge(self, x, y):
         x_representative = self.map[x]
         y_representative = self.map[y]
-        
-        for (key, value) in self.map.items():
-            if value == y_representative:
-                self.map[key] = x_representative
+
+        if x_representative != y_representative:
+            for (key, value) in self.map.items():
+                if value == y_representative:
+                    self.map[key] = x_representative
     
     def sets(self):
         sets = defaultdict(list)
