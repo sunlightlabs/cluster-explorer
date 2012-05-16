@@ -31,7 +31,7 @@ def ingest_docket(agency, docket, docs, ngrams=None):
     
     c = Corpus(metadata=dict(docket=docket, agency=agency))
     if ngrams:
-        i = DocumentIngester(c, parser=ngram_parser(int(options['ngrams'])))
+        i = DocumentIngester(c, parser=ngram_parser(int(ngrams)))
     else:
         i = DocumentIngester(c)
     i.ingest(docs)
