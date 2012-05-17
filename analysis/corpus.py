@@ -159,7 +159,7 @@ class Corpus(object):
         
         return self.cursor.fetchall()
         
-    def centroid_doc(self, doc_ids):
+    def docs_by_centrality(self, doc_ids):
         """Return the document from given document set with minimum average
         distance to other documents in the set.
         
@@ -181,7 +181,7 @@ class Corpus(object):
                     and low_document_id in %(doc_ids)s
                     and high_document_id in %(doc_ids)s
             )
-            select document_id, text
+            select document_id, metadata
             from (
                 select low_document_id as document_id, similarity from included_sims
                 union all
@@ -190,13 +190,12 @@ class Corpus(object):
             inner join documents using (document_id)
             where
                 documents.corpus_id = %(corpus_id)s
-            group by document_id, text
+            group by document_id, metadata
             order by sum(similarity) desc
-            limit 1
         """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
-        
-        return self.cursor.fetchone()
-    
+
+        return self.cursor.fetchall()
+
     # todo: return example of each phrase occurrence?
     def representative_phrases(self, doc_ids, limit=10):
         """Return phrases representative of given set of documents.
