@@ -8,6 +8,7 @@ from phrases import PhraseSequencer
 from parser import sentence_parse, ngram_parse, sentence_boundaries, sentence_indexed_parse
 from sql_utils import execute_file
 from corpus import Corpus
+from partition import Partition
 
 
 class DBTestCase(TestCase):
@@ -20,6 +21,23 @@ class DBTestCase(TestCase):
         
     def tearDown(self):
         execute_file(self.cursor, os.path.join(os.path.dirname(__file__), 'drop_tables.sql'))
+
+class TestPartition(TestCase):
+    # note: order of returned sets is really undefined.
+    # but you can't have sets of sets, so there's no easy
+    # way of expressing this in the test. Just changing
+    # the expected order to match the observed order on my setup.
+    def test_partition(self):
+        p = Partition('abcde')
+        self.assertEqual([['a'], ['b'], ['c'], ['d'], ['e']], p.sets())
+        p.merge('a', 'b')
+        self.assertEqual([['a', 'b'], ['c'], ['d'], ['e']], p.sets())
+        p.merge('c', 'd')
+        self.assertEqual([['a', 'b'], ['c', 'd'], ['e']], p.sets())
+        p.merge('a', 'd')
+        self.assertEqual([['a', 'c', 'b', 'd'], ['e']], p.sets())
+        p.merge('b', 'e')
+        self.assertEqual([['a', 'c', 'b', 'e', 'd']], p.sets())
         
 
 class TestSequencer(DBTestCase):
