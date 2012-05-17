@@ -49,5 +49,6 @@ create table similarities (
 
 create index similarities_corpus_low_id on similarities (corpus_id, low_document_id);
 create index similarities_corpus_high_id on similarities (corpus_id, high_document_id);
+create index similarities_similarity on similarities (corpus_id, similarity);
 
 
