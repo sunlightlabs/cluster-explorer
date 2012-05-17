@@ -29,7 +29,9 @@ def load_docket(es_endpoint, docket):
 def ingest_docket(agency, docket, docs, ngrams=None):
     print "Beginning processing %s at %s" % (docket, datetime.now())
     
-    c = Corpus(metadata=dict(docket=docket, agency=agency))
+    parser_tag = "%s-grams" % ngrams if ngrams else 'sentence'
+    
+    c = Corpus(metadata=dict(docket=docket, agency=agency, parser=parser_tag))
     if ngrams:
         i = DocumentIngester(c, parser=ngram_parser(int(ngrams)))
     else:
