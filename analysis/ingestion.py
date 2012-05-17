@@ -3,7 +3,7 @@ import tempfile
 import csv
 import sys
 
-from parser import sentence_indexed_parse
+from parser import sentence_parse
 from phrases import PhraseSequencer
 from cluster.ngrams import jaccard
 from corpus import Corpus
@@ -20,10 +20,10 @@ def _encode(s):
 
 class DocumentIngester(object):
     
-    def __init__(self, corpus, parser=sentence_indexed_parse):
+    def __init__(self, corpus, parser=sentence_parse):
         """Return a new ingester for the corpus.
         
-        parser may be sentence_indexed_parse or ngram_indexed_parser(n)
+        parser may be sentence_parse or ngram_parser(n)
         
         Client must insure that no other ingester is running
         concurrently on the same corpus.

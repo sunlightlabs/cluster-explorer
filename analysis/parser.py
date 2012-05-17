@@ -6,7 +6,7 @@ import re
 _sentence_breaker = nltk.data.load('tokenizers/punkt/english.pickle')
 
 _non_words = re.compile('\W+')
-def normalize(token):
+def _normalize(token):
     words = re.sub(_non_words, ' ', token).lower()
     
     # filter phrases that aren't at least half word characters--likely represents non-content
@@ -15,39 +15,33 @@ def normalize(token):
         
     return words
 
-def sentence_parse(text, sequencer):
-    sentences = [s for s in _sentence_breaker.tokenize(text) if len(s) < 1000] # long sentences are probably parse errors
-    phrase_ids = list()
-    for sentence in sentences:
-        normalized = normalize(sentence)
+def _boundary_sequencer(boundaries, text, sequencer):
+    phrase_map = defaultdict(list)
+    for (start, end) in boundaries:
+        normalized = _normalize(text[start:end])
         if normalized != '':
-            phrase_ids.append(sequencer.sequence(normalized))
-            
-    return sorted(set(phrase_ids))
+            phrase_map[sequencer.sequence(normalized)].append((start, end))
 
+    phrases = phrase_map.items()
+    phrases.sort(key=lambda (id, indexes): id)
+
+    return phrases
+
+
+def _ngram_boundaries(text, n):
+    result = list()
+    unigram_boundaries = [match.span() for match in re.finditer('\w+', text)]
+
+    for i in range(0, len(unigram_boundaries) + 1 - n):
+        result.append((unigram_boundaries[i][0], unigram_boundaries[i + n - 1][1]))
+        
+    return result
 
 def ngram_parser(n):
-    return lambda text, sequencer: ngram_parse(text, n, sequencer)
-
-# a fake implementation--returns empty indexes
-def ngram_indexed_parser(n):
-    return lambda text, sequencer: [(id, []) for id in ngram_parse(text, n, sequencer)]
+    return lambda text, squencer: _boundary_sequencer(_ngram_boundaries(text, n), sequencer)
 
 
-def ngram_parse(text, n, sequencer):
-    normalized_text = re.sub('\W', ' ', text.lower())
-    split_text = normalized_text.split()
-
-    phrase_ids = list()
-    
-    for i in range(0, len(split_text) + 1 - n):
-        phrase_ids.append(sequencer.sequence(" ".join(split_text[i:i+n])))
-    
-    return sorted(set(phrase_ids))
-
-
-
-def sentence_boundaries(text):
+def _sentence_boundaries(text):
     token_indexes = list()
     start = 0
     end = 0
@@ -59,14 +53,6 @@ def sentence_boundaries(text):
     
     return token_indexes
     
-def sentence_indexed_parse(text, sequencer):
-    phrase_map = defaultdict(list)
-    for (start, end) in sentence_boundaries(text):
-        normalized = normalize(text[start:end])
-        if normalized != '':
-            phrase_map[sequencer.sequence(normalized)].append((start, end))
-
-    phrases = phrase_map.items()
-    phrases.sort(key=lambda (id, indexes): id)
+def sentence_parse(text, sequencer):
+    return _boundary_sequencer(_sentence_boundaries(text), text, sequencer)
     
-    return phrases

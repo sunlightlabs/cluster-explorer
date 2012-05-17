@@ -5,7 +5,7 @@ from django.db import connection, transaction
 
 from ingestion import *
 from phrases import PhraseSequencer
-from parser import sentence_parse, ngram_parse, sentence_boundaries, sentence_indexed_parse
+from parser import _sentence_boundaries, _ngram_boundaries, sentence_parse
 from sql_utils import execute_file
 from corpus import Corpus
 from partition import Partition
@@ -89,8 +89,8 @@ class TestParser(DBTestCase):
         p1 = sentence_parse(t1, s)
         p2 = sentence_parse(t2, s)
         
-        self.assertEqual([0, 1, 2], p1)
-        self.assertEqual([0, 1, 2], p2)
+        self.assertEqual([(0, [(0, 21)]), (1, [(22, 36)]), (2, [(37, 49)])], p1)
+        self.assertEqual([(0, [(30, 51)]), (1, [(0, 14)]), (2, [(15, 29)])], p2)
         
     def test_empty(self):
         s = PhraseSequencer(self.corpus)
@@ -105,65 +105,52 @@ class TestParser(DBTestCase):
         
     def test_ngrams(self):
         s = PhraseSequencer(self.corpus)
+        
+        self.assertEqual([], _ngram_boundaries('', 3))
+        self.assertEqual([], _ngram_boundaries('foobar', 3))
+        self.assertEqual([(0,6)], _ngram_boundaries('foobar', 1))
+        self.assertEqual([], _ngram_boundaries('foo bar', 3))
+        self.assertEqual([(0, 12)], _ngram_boundaries('foo bar spaz', 3))
+        
         t1 = "One simple sentence. With punctuation."
-        t2 = "One Simple sentence--with punctuation?"
+        self.assertEqual([(0,19), (4,25), (11, 37)], _ngram_boundaries(t1, 3))
         
-        p1_1 = ngram_parse(t1, 1, s)
-        p2_1 = ngram_parse(t2, 1, s)
+        t2 = "One Simple sentence--with punctuation??"
+        self.assertEqual([(0,19), (4,25), (11, 37)], _ngram_boundaries(t2, 3))
         
-        self.assertEqual([0, 1, 2, 3, 4], p1_1)
-        self.assertEqual(p1_1, p2_1)
+        t3 = "\n testing...trailing spaces.\t "
+        self.assertEqual([(2,27)], _ngram_boundaries(t3, 3))
         
-        p1_3 = ngram_parse(t1, 3, s)
-        p2_3 = ngram_parse(t2, 3, s)
-        
-        self.assertEqual([5, 6, 7], p1_3)
-        self.assertEqual(p1_3, p2_3)
-        
-        p1_5 = ngram_parse(t1, 5, s)
-        p2_5 = ngram_parse(t2, 5, s)
-        
-        self.assertEqual([8], p1_5)
-        self.assertEqual(p1_5, p2_5)
-        
-        p1_6 = ngram_parse(t1, 6, s)
-        p2_6 = ngram_parse(t2, 6, s)
-        
-        self.assertEqual([], p1_6)
-        self.assertEqual(p1_6, p2_6)
-        
-class TestIndexingParser(DBTestCase):
-    
     def test_sentence_tokenize(self):
         t = ''
-        self.assertEqual([], sentence_boundaries(t))
+        self.assertEqual([], _sentence_boundaries(t))
         
         t = '   '
-        self.assertEqual([], sentence_boundaries(t))
+        self.assertEqual([], _sentence_boundaries(t))
 
         t = 'A simple test case. Of two sentences.'
-        self.assertEqual([(0, 19), (20, 37)], sentence_boundaries(t))
+        self.assertEqual([(0, 19), (20, 37)], _sentence_boundaries(t))
         
         t = 'A simple test case. \t \t \n Of two sentences.'
-        self.assertEqual([(0, 19), (26, 43)], sentence_boundaries(t))
+        self.assertEqual([(0, 19), (26, 43)], _sentence_boundaries(t))
 
-    def test_sentence_indexed_parse(self):
+    def test_sentence_parse(self):
         s = PhraseSequencer(self.corpus)
 
         t = ''
-        self.assertEqual([], sentence_indexed_parse(t, s))
+        self.assertEqual([], sentence_parse(t, s))
 
         t = '   '
-        self.assertEqual([], sentence_indexed_parse(t, s))
+        self.assertEqual([], sentence_parse(t, s))
 
         t = 'A simple test case. Of two sentences.'
-        self.assertEqual([(0, [(0, 19)]), (1, [(20, 37)])], sentence_indexed_parse(t, s))
+        self.assertEqual([(0, [(0, 19)]), (1, [(20, 37)])], sentence_parse(t, s))
 
         t = ' \n A simple test case. \t \t \n Of two sentences.\n'
-        self.assertEqual([(0, [(3, 22)]), (1, [(29, 46)])], sentence_indexed_parse(t, s))
+        self.assertEqual([(0, [(3, 22)]), (1, [(29, 46)])], sentence_parse(t, s))
         
         t = 'of two sentences. of two sentences?'
-        self.assertEqual([(1, [(0, 17), (18, 35)])], sentence_indexed_parse(t, s))
+        self.assertEqual([(1, [(0, 17), (18, 35)])], sentence_parse(t, s))
         
  
 class TestDocumentIngester(DBTestCase):
@@ -175,8 +162,8 @@ class TestDocumentIngester(DBTestCase):
         t1 = 'This document has three sentences. One of which matches. Two of which do not.'
         t2 = 'This document has only two sentences. One of which matches.'
         
-        i._record_document(t1, sentence_indexed_parse(t1, s), {})
-        i._record_document(t2, sentence_indexed_parse(t2, s), {})
+        i._record_document(t1, sentence_parse(t1, s), {})
+        i._record_document(t2, sentence_parse(t2, s), {})
         
         s.upload_new_phrases()
         i._upload_new_documents()
@@ -194,7 +181,7 @@ class TestDocumentIngester(DBTestCase):
         s = PhraseSequencer(self.corpus)
         
         t3 = 'This document has only two sentences. Only one of which is new.'
-        p3 = sentence_indexed_parse(t3, s)
+        p3 = sentence_parse(t3, s)
         
         doc_id = i._record_document(t3, p3, {})
         self.assertEqual(2, doc_id)
@@ -366,7 +353,7 @@ class TestRealData(DBTestCase):
 
         i = DocumentIngester(self.corpus)
         
-        self.assertEqual([(0, [(0, 18), (19, 37), (60, 78)]), (1, [(38, 59)])], sentence_indexed_parse(doc, i.sequencer))
+        self.assertEqual([(0, [(0, 18), (19, 37), (60, 78)]), (1, [(38, 59)])], sentence_parse(doc, i.sequencer))
         
         i.ingest([doc])
 
