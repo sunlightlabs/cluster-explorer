@@ -38,7 +38,7 @@ def _ngram_boundaries(text, n):
     return result
 
 def ngram_parser(n):
-    return lambda text, squencer: _boundary_sequencer(_ngram_boundaries(text, n), sequencer)
+    return lambda text, sequencer: _boundary_sequencer(_ngram_boundaries(text, n), text, sequencer)
 
 
 def _sentence_boundaries(text):
