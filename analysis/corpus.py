@@ -38,9 +38,13 @@ class Corpus(object):
         if corpus_id is None:
             self.cursor.execute("insert into corpora (metadata) values (%s) returning corpus_id", [metadata])
             self.id = self.cursor.fetchone()[0]
+            self.metadata = metadata
         else:
             self.id = corpus_id
-    
+            self.cursor.execute("select metadata from corpora where corpus_id = %s", [corpus_id])
+            self.metadata = self.cursor.fetchone()[0]
+
+
     ### methods used by DocumentIngester ###    
         
     def max_doc_id(self):
