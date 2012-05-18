@@ -1,0 +1,2 @@
+django==1.4
+-e git+https://github.com/mvantellingen/psycopg2-ctypes#egg=psycopg2ct
