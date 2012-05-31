@@ -110,6 +110,7 @@ class DocumentIngester(object):
 
     @staticmethod
     def _pairs_for_comparison(all_ids, new_ids):
+        allowed_ids = set(all_ids)
         all_ids = list(all_ids)
         all_ids.sort()
     
@@ -120,7 +121,8 @@ class DocumentIngester(object):
             for y in new_ids:
                 if x >= y:
                     break
-                yield (x, y)                
+                if y in allowed_ids:
+                    yield (x, y)
 
     def _compute_similarities(self, new_doc_ids, min_similarity=0.1):
         sim_file = tempfile.TemporaryFile()

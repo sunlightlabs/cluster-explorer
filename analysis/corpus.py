@@ -63,16 +63,15 @@ class Corpus(object):
         self.cursor.copy_expert("copy %s from STDIN csv" % tablename, file)
     
     def all_docs(self):
+        """Return the phrases in all non-empty documents."""
+        
         self.cursor.execute("""
-            select document_id, coalesce(phrases, ARRAY[]::integer[])
-            from documents
-            left join (
-                select document_id, array_agg(phrase_id order by phrase_id) as phrases
-                from phrase_occurrences
-                where
-                    corpus_id = %s
-                group by document_id) x using (document_id)
-        """, [self.id])
+            select document_id, array_agg(phrase_id order by phrase_id) as phrases
+            from phrase_occurrences
+            where
+                corpus_id = %(corpus_id)s
+            group by document_id
+        """, dict(corpus_id=self.id))
         
         return dict(self.cursor.fetchall())
     
