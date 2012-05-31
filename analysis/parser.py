@@ -1,4 +1,10 @@
 
+# needed for NLTK to work under pypy
+try:
+    import numpypy
+except:
+    pass
+    
 from collections import defaultdict
 import nltk.data
 import re
