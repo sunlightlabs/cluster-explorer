@@ -174,25 +174,21 @@ class Corpus(object):
             
         self.cursor.execute("""
             with included_sims as (
-                select low_document_id, high_document_id, similarity
+                select unnest(ARRAY[low_document_id, high_document_id]) as document_id, similarity
                 from similarities
                 where
                     corpus_id = %(corpus_id)s
                     and low_document_id in %(doc_ids)s
                     and high_document_id in %(doc_ids)s
             )
-            select document_id, metadata
-            from (
-                select low_document_id as document_id, similarity from included_sims
-                union all
-                select high_document_id, similarity from included_sims
-            ) x
+            select document_id, metadata, sum(similarity)::float / %(num_docs)s
+            from included_sims
             inner join documents using (document_id)
             where
                 documents.corpus_id = %(corpus_id)s
             group by document_id, metadata
             order by sum(similarity) desc
-        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
+        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids), num_docs=len(doc_ids)))
 
         return self.cursor.fetchall()
 
