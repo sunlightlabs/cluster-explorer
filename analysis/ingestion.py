@@ -124,7 +124,7 @@ class DocumentIngester(object):
                 if y in allowed_ids:
                     yield (x, y)
 
-    def _compute_similarities(self, new_doc_ids, min_similarity=0.1):
+    def _compute_similarities(self, new_doc_ids, min_similarity=0.2):
         sim_file = tempfile.TemporaryFile()
         sim_writer = csv.writer(sim_file)
         
