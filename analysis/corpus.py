@@ -232,16 +232,9 @@ class Corpus(object):
         
         return weighted_phrase_sets[:limit]
 
-    def clusters(self, min_similarity):
-        """Return clustering of subset of corpus with similarity above given threshold.
-        
-        Two documents are clustered if they are linked through a sequence of documents
-        with similarity above the given threshold. Put another way, the clustering is
-        the set of connected components of the similarity graph above the cutoff.
-        
-        Result is a list of list of document IDs.
-        """
-        
+
+    def _get_similarities(self):
+        # todo: this could be made more efficient with a custom pickling method
         similarities = cache.get('similarities-%s' % self.id)
         if similarities is None:
             self.cursor.execute("""
@@ -255,9 +248,22 @@ class Corpus(object):
             similarities = self.cursor.fetchall()
             cache.set('similarities-%s' % self.id, similarities)
 
+        return similarities
+
+    def clusters(self, min_similarity):
+        """Return clustering of subset of corpus with similarity above given threshold.
+        
+        Two documents are clustered if they are linked through a sequence of documents
+        with similarity above the given threshold. Put another way, the clustering is
+        the set of connected components of the similarity graph above the cutoff.
+        
+        Result is a list of list of document IDs.
+        """
+        
+        all_edges = self._get_similarities()
         # todo: this could be made more efficient by doing a binary search to last
         # edge above cutoff and then taking a slice.
-        edges = [(x, y) for (x, y, sim) in similarities if sim >= min_similarity]
+        edges = [(x, y) for (x, y, sim) in all_edges if sim >= min_similarity]
         vertices = set([x for (x, y) in edges] + [y for (x, y) in edges])
         
         partition = Partition(vertices)
@@ -266,6 +272,25 @@ class Corpus(object):
             partition.merge(x, y)
             
         return partition.sets()
+
+    def clusters_for_doc(self, doc_id):
+        """Return the size of the cluster the given doc is in at different cutoffs."""
+        
+        edges = self._get_similarities()
+        vertices = set([x for (x, y, _) in edges] + [y for (x, y, _) in edges])
+        partition = Partition(vertices)
+        
+        result = []
+        num_edges = len(edges)
+        i = 0
+        for c in range(1, 11):
+            cutoff = 1.0 - c * 0.05
+            while i < num_edges and edges[i][2] >= cutoff:
+                partition.merge(edges[i][0], edges[i][1])
+                i += 1
+            result.append((cutoff, len(partition.group(doc_id))))
+
+        return result
 
     def similar_docs(self, doc_id, min_similarity=0.5):
         """Return all documents similar to the given document.

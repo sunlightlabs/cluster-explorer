@@ -45,3 +45,14 @@ class Partition(object):
        
         return sets.values()
 
+    def group(self, x):
+        """Return set of all items grouped with x."""
+        
+        result = set()
+        xRoot = self._find(self.value_positions[x])
+        for (value, position) in self.value_positions.iteritems():
+            if self._find(position) == xRoot:
+                result.add(value)
+        
+        return result
+        
