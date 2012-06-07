@@ -1,6 +1,7 @@
 
 import psycopg2.extras
 from django.db import connection
+from django.core.cache import cache
 
 from partition import Partition
 from cluster.ngrams import jaccard
@@ -241,15 +242,22 @@ class Corpus(object):
         Result is a list of list of document IDs.
         """
         
-        self.cursor.execute("""
-                select low_document_id, high_document_id
-                from similarities
-                where
-                    corpus_id = %(corpus_id)s
-                    and similarity >= %(min_similarity)s
-        """, dict(corpus_id=self.id, min_similarity=min_similarity))
+        similarities = cache.get('similarities-%s' % self.id)
+        if similarities is None:
+            self.cursor.execute("""
+                    select low_document_id, high_document_id, similarity
+                    from similarities
+                    where
+                        corpus_id = %s
+                        and similarity >= 0.5 -- todo: lower bound should be set at ingestion time, not here
+                    order by similarity desc
+            """, [self.id])
+            similarities = self.cursor.fetchall()
+            cache.set('similarities-%s' % self.id, similarities)
 
-        edges = self.cursor.fetchall()
+        # todo: this could be made more efficient by doing a binary search to last
+        # edge above cutoff and then taking a slice.
+        edges = [(x, y) for (x, y, sim) in similarities if sim >= min_similarity]
         vertices = set([x for (x, y) in edges] + [y for (x, y) in edges])
         
         partition = Partition(vertices)
