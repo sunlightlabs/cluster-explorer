@@ -9,6 +9,7 @@ from cluster.ngrams import jaccard
 from corpus import Corpus
 
 
+
 def _encode(s):
     if isinstance(s, str):
         return unicode(s, 'utf8', 'replace').encode('utf8')
@@ -39,7 +40,6 @@ class DocumentIngester(object):
         self.document_writer = csv.writer(self.document_file)
 
         self.occurrence_file = tempfile.TemporaryFile()
-        self.occurrence_writer = csv.writer(self.occurrence_file)
         
         self.sequencer = PhraseSequencer(corpus)
         
@@ -52,8 +52,8 @@ class DocumentIngester(object):
         self.document_writer.writerow([self.corpus.id, doc_id, _encode(text), formatted_metadata])
         
         for (phrase_id, indexes) in phrases:
-            formatted_indexes = '{%s}' % ", ".join(['"(%s, %s)"' % (start, end) for (start, end) in indexes])
-            self.occurrence_writer.writerow([self.corpus.id, doc_id, phrase_id, formatted_indexes])
+            formatted_indexes = '"{%s}"' % ", ".join(['""(%s, %s)""' % (start, end) for (start, end) in indexes])
+            self.occurrence_file.write("%s,%s,%s,%s\n" % (self.corpus.id, doc_id, phrase_id, formatted_indexes))
 
         return doc_id 
         
@@ -77,7 +77,6 @@ class DocumentIngester(object):
         self.corpus.upload_csv(self.occurrence_file, 'phrase_occurrences')
         self.occurrence_file.close()
         self.occurrence_file = tempfile.TemporaryFile()
-        self.occurrence_writer = csv.writer(self.occurrence_file)
 
 
     def ingest(self, docs):
@@ -126,7 +125,6 @@ class DocumentIngester(object):
 
     def _compute_similarities(self, new_doc_ids, min_similarity=0.2):
         sim_file = tempfile.TemporaryFile()
-        sim_writer = csv.writer(sim_file)
         
         docs = self.corpus.all_docs()
     
@@ -135,7 +133,7 @@ class DocumentIngester(object):
         for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
             similarity = jaccard(docs[x], docs[y])
             if similarity >= min_similarity:
-                sim_writer.writerow([self.corpus.id, x, y, similarity])
+                sim_file.write("%s,%s,%s,%s\n" % (self.corpus.id, x, y, similarity))
             
             i += 1
             if i % 10000000 == 0:

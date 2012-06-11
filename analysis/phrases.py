@@ -16,12 +16,15 @@ class PhraseSequencer(object):
         self.phrase_map = self.corpus.all_phrases()
         
         self.new_phrase_file = tempfile.TemporaryFile()
-        self.writer = csv.writer(self.new_phrase_file)
 
     def sequence(self, phrase):
         """Return a unique integer for the phrase
         
         If phrase is new, record for later upload to database.
+        
+        WARNING: For performance reasons (CSV lib is very slow under pypy),
+        no escaping is done in CSV upload to database. Therefore phrase
+        must not contain any control characters--newlines, quotes or commas.
         
         """
 
@@ -33,7 +36,7 @@ class PhraseSequencer(object):
         self.next_id += 1
 
         self.phrase_map[phrase] = phrase_id
-        self.writer.writerow([self.corpus.id, phrase_id, phrase])
+        self.new_phrase_file.write("%s,%s,%s\n" % (self.corpus.id, phrase_id, phrase))
         
         return phrase_id 
 
@@ -47,4 +50,3 @@ class PhraseSequencer(object):
         
         self.new_phrase_file.close()
         self.new_phrase_file = tempfile.TemporaryFile()
-        self.writer = csv.writer(self.new_phrase_file)
