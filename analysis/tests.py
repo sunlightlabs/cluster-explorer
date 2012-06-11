@@ -211,7 +211,7 @@ class TestDocumentIngester(DBTestCase):
         c.execute('select count(*) from documents')
         self.assertEqual(4, c.fetchone()[0])
         
-        self.assertEqual(dict([(0, [0, 1, 2]), (1, [1, 3]), (2, [3, 4]), [3, []]]), self.corpus.all_docs())
+        self.assertEqual(dict([(0, [0, 1, 2]), (1, [1, 3]), (2, [3, 4])]), self.corpus.all_docs())
 
     def test_similarities(self):
         
