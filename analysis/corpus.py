@@ -1,10 +1,20 @@
 
+from itertools import chain
+
+try:
+    # needed if we're running under PyPy
+    import numpypy
+except:
+    pass
+import numpy
+
 import psycopg2.extras
 from django.db import connection
 from django.core.cache import cache
 
 from partition import Partition
 from cluster.ngrams import jaccard
+from utils import binary_search
 
 # Django connection is a wrappers around psycopg2 connection,
 # but that wrapped object isn't initialized till a call is made.
@@ -233,10 +243,14 @@ class Corpus(object):
         return weighted_phrase_sets[:limit]
 
 
-    def _get_similarities(self):
-        # todo: this could be made more efficient with a custom pickling method
-        similarities = cache.get('similarities-%s' % self.id)
-        if similarities is None:
+    def _get_similarities(self, min_sim=None):
+        cached = cache.get('similarities-%s' % self.id)
+        if cached:
+            xs = numpy.fromstring(cached[0], numpy.int32)
+            ys = numpy.fromstring(cached[1], numpy.int32)
+            sims = numpy.fromstring(cached[2], numpy.float32)
+        
+        else:
             self.cursor.execute("""
                     select low_document_id, high_document_id, similarity
                     from similarities
@@ -245,11 +259,25 @@ class Corpus(object):
                         and similarity >= 0.5 -- todo: lower bound should be set at ingestion time, not here
                     order by similarity desc
             """, [self.id])
-            similarities = self.cursor.fetchall()
-            cache.set('similarities-%s' % self.id, similarities)
+        
+            i = 0
+            xs = numpy.empty(self.cursor.rowcount, numpy.uint32)
+            ys = numpy.empty(self.cursor.rowcount, numpy.uint32)
+            sims = numpy.empty(self.cursor.rowcount, numpy.float32)
+            for (x, y, s) in self.cursor.fetchall():
+                xs[i], ys[i], sims[i] = x, y, s
+                i += 1
+        
+            cache.set('similarities-%s' % self.id, (xs.tostring(), ys.tostring(), sims.tostring()))
 
-        return similarities
+        if min_sim:
+            sims = sims[:binary_search(sims, min_sim)]
+            xs = xs[:len(sims)]
+            ys = ys[:len(sims)]
 
+        return (xs, ys, sims)
+        
+        
     def clusters(self, min_similarity):
         """Return clustering of subset of corpus with similarity above given threshold.
         
@@ -260,33 +288,30 @@ class Corpus(object):
         Result is a list of list of document IDs.
         """
         
-        all_edges = self._get_similarities()
-        # todo: this could be made more efficient by doing a binary search to last
-        # edge above cutoff and then taking a slice.
-        edges = [(x, y) for (x, y, sim) in all_edges if sim >= min_similarity]
-        vertices = set([x for (x, y) in edges] + [y for (x, y) in edges])
+        xs, ys, _ = self._get_similarities(min_similarity)
+        vertices = set(chain(xs, ys))
         
         partition = Partition(vertices)
         
-        for (x, y) in edges:
-            partition.merge(x, y)
+        for i in range(len(xs)):
+            partition.merge(xs[i], ys[i])
             
         return partition.sets()
 
     def clusters_for_doc(self, doc_id):
         """Return the size of the cluster the given doc is in at different cutoffs."""
         
-        edges = self._get_similarities()
-        vertices = set([x for (x, y, _) in edges] + [y for (x, y, _) in edges])
+        xs, ys, sims = self._get_similarities()
+        vertices = set(chain(xs, ys))
         partition = Partition(vertices)
         
         result = []
-        num_edges = len(edges)
+        num_edges = len(sims)
         i = 0
         for c in range(1, 11):
             cutoff = 1.0 - c * 0.05
-            while i < num_edges and edges[i][2] >= cutoff:
-                partition.merge(edges[i][0], edges[i][1])
+            while i < num_edges and sims[i] >= cutoff:
+                partition.merge(xs[i], ys[i])
                 i += 1
             result.append((cutoff, len(partition.group(doc_id))))
 

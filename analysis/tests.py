@@ -6,7 +6,7 @@ from django.db import connection, transaction
 from ingestion import *
 from phrases import PhraseSequencer
 from parser import _sentence_boundaries, _ngram_boundaries, sentence_parse
-from sql_utils import execute_file
+from utils import execute_file, binary_search
 from corpus import Corpus
 from partition import Partition
 
@@ -378,6 +378,31 @@ class TestRealData(DBTestCase):
         
         self.cursor.execute("select text from documents")
         self.assertEqual(u'This has a bad \ufffdharacter.', self.cursor.fetchone()[0])
+
+
+class TestBinarySearch(TestCase):
+    
+    def test(self):
+        self.assertEqual(0, binary_search([], 9))
+        self.assertEqual(0, binary_search([1], 2))
+        self.assertEqual(1, binary_search([1], 1))
+        self.assertEqual(0, binary_search([2, 1], 3))
+        self.assertEqual(1, binary_search([2, 1], 2))
+        self.assertEqual(1, binary_search([2, 1], 1.5))
+        self.assertEqual(2, binary_search([2, 1], 1))
+        self.assertEqual(2, binary_search([2, 1], 0))
+        self.assertEqual(0, binary_search([3, 2, 1], 4))
+        self.assertEqual(1, binary_search([3, 2, 1], 3))
+        self.assertEqual(2, binary_search([3, 2, 1], 2))
+        self.assertEqual(3, binary_search([3, 2, 1], 0))
+        self.assertEqual(0, binary_search([6, 5, 4, 3, 2, 1], 7))
+        self.assertEqual(4, binary_search([6, 5, 4, 3, 2, 1], 3))
+        self.assertEqual(6, binary_search([6, 5, 4, 3, 2, 1], 0))
+        self.assertEqual(0, binary_search([7, 6, 5, 4, 3, 2, 1], 8))
+        self.assertEqual(1, binary_search([7, 6, 5, 4, 3, 2, 1], 7))
+        self.assertEqual(5, binary_search([7, 6, 5, 4, 3, 2, 1], 3))
+        self.assertEqual(7, binary_search([7, 6, 5, 4, 3, 2, 1], 0))
+        
 
 
 if __name__ == '__main__':
