@@ -8,7 +8,7 @@ def execute_file(cursor, filename):
 
 
 
-def binary_search(a, x):
+def binary_search(a, x, key=None):
     """Given a sorted (decreasing) list, return the first element that is less than the target value."""
     
     left = 0
@@ -17,7 +17,7 @@ def binary_search(a, x):
     while (left < right):
         mid = (right + left) / 2
         
-        if a[mid] >= x:
+        if (key(a[mid]) if key else a[mid]) >= x:
             left = mid + 1
         else:
             right = mid

@@ -1,6 +1,4 @@
 
-from itertools import chain
-
 try:
     # needed if we're running under PyPy
     import numpypy
@@ -274,6 +272,11 @@ class Corpus(object):
             sims = sims[:binary_search(sims, min_sim)]
             xs = xs[:len(sims)]
             ys = ys[:len(sims)]
+        
+        # conversion back to Python ints makes follow up
+        # computations much faster in PyPy
+        xs = [int(x) for x in xs]
+        ys = [int(y) for y in ys]
 
         return (xs, ys, sims)
         
@@ -289,7 +292,7 @@ class Corpus(object):
         """
         
         xs, ys, _ = self._get_similarities(min_similarity)
-        vertices = set(chain(xs, ys))
+        vertices = set(xs + ys)
         
         partition = Partition(vertices)
         
@@ -298,11 +301,12 @@ class Corpus(object):
             
         return partition.sets()
 
+
     def clusters_for_doc(self, doc_id):
         """Return the size of the cluster the given doc is in at different cutoffs."""
         
         xs, ys, sims = self._get_similarities()
-        vertices = set(chain(xs, ys))
+        vertices = set(xs + ys)
         partition = Partition(vertices)
         
         result = []
