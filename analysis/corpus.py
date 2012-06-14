@@ -308,7 +308,7 @@ class Corpus(object):
         See https://github.com/mbostock/d3/wiki/Partition-Layout for result format.
         
         The documents in a particular cluster can be found by calling
-        cluster_at_cutoff() using the "name" and "cutoff" values from
+        cluster() using the "name" and "cutoff" values from
         the hierarchy.
         """
         
@@ -338,7 +338,7 @@ class Corpus(object):
             
         return hierarchy
     
-    def cluster_at_cutoff(self, doc_id, cutoff):
+    def cluster(self, doc_id, cutoff):
         """Return the set of document IDs in the cluster containing given doc at given cutoff.
         
         hierarchy() method should be used first to get the overview of clusters. This
