@@ -354,7 +354,7 @@ class Corpus(object):
             partition.merge(xs[i], ys[i])
             i += 1
             
-        return partition.group(doc_id)
+        return (partition.representative(doc_id), partition.group(doc_id))
 
     def clusters_for_doc(self, doc_id):
         """Return the size of the cluster the given doc is in at different cutoffs."""
