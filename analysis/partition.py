@@ -9,6 +9,11 @@ class Partition(object):
     """
     
     def __init__(self, values):
+        """Create a partition of the given values.
+        
+        Elements of values must be unique, or behavior will be undefined.
+        """
+        
         # these two don't change after initialization
         self.values = list(values)
         self.value_positions = dict(zip(values, range(len(values))))
@@ -25,6 +30,8 @@ class Partition(object):
         return self.parent[x]
         
     def merge(self, x, y):
+        """Combine the set containing x with the set containing y."""
+        
         xRoot = self._find(self.value_positions[x])
         yRoot = self._find(self.value_positions[y])
         if xRoot == yRoot:
@@ -39,11 +46,25 @@ class Partition(object):
             self.rank[xRoot] += 1
     
     def sets(self):
+        """Return a list of lists of grouped values."""
+        
         sets = defaultdict(list)
         for (value, position) in self.value_positions.iteritems():
             sets[self._find(position)].append(value)
        
         return sets.values()
+
+    def sets_overview(self):
+        """Return the representative and size of each set.
+        
+        Simlar to sets() method but without returning actual membership lists.
+        """
+
+        sets = defaultdict(int)
+        for position in range(len(self.values)):
+            sets[self.values[self._find(position)]] += 1
+            
+        return sets
 
     def group(self, x):
         """Return set of all items grouped with x."""
@@ -55,4 +76,10 @@ class Partition(object):
                 result.add(value)
         
         return result
+    
+    def representative(self, x):
+        """Return the value that represents the set containing x."""
+        
+        return self.values[self._find(self.value_positions[x])]
+    
         

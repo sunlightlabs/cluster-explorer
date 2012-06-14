@@ -280,7 +280,6 @@ class Corpus(object):
 
         return (xs, ys, sims)
         
-        
     def clusters(self, min_similarity):
         """Return clustering of subset of corpus with similarity above given threshold.
         
@@ -301,6 +300,61 @@ class Corpus(object):
             
         return partition.sets()
 
+    def hierarchy(self, cutoffs, pruning_size=1):
+        """Return the hierarchy of clusters, in the format d3 expects.
+        
+        Cutoffs must be a descending list of floats.
+        
+        See https://github.com/mbostock/d3/wiki/Partition-Layout for result format.
+        
+        The documents in a particular cluster can be found by calling
+        cluster_at_cutoff() using the "name" and "cutoff" values from
+        the hierarchy.
+        """
+        
+        xs, ys, sims = self._get_similarities()
+        partition = Partition(set(xs + ys))
+        
+        hierarchy = {}
+        num_edges = len(sims)
+        i = 0
+        for c in cutoffs:
+            while i < num_edges and sims[i] >= c:
+                partition.merge(xs[i], ys[i])
+                i += 1
+            
+            new_hierarchy = [
+                {'name':representative, 'size': size, 'children': [], 'cutoff': c}
+                for (representative, size) in partition.sets_overview().iteritems()
+                if size > pruning_size
+            ]
+            
+            for prev_cluster in hierarchy:
+                for cluster in new_hierarchy:
+                    if partition.representative(prev_cluster['name']) == cluster['name']:
+                        cluster['children'].append(prev_cluster)
+                        
+            hierarchy = new_hierarchy
+            
+        return hierarchy
+    
+    def cluster_at_cutoff(self, doc_id, cutoff):
+        """Return the set of document IDs in the cluster containing given doc at given cutoff.
+        
+        hierarchy() method should be used first to get the overview of clusters. This
+        method can then be called with a particular doc ID and cutoff from the hierarchy.
+        """
+        
+        xs, ys, sims = self._get_similarities()
+        partition = Partition(set(xs + ys))
+
+        num_edges = len(sims)
+        i = 0
+        while i < num_edges and sims[i] >= cutoff:
+            partition.merge(xs[i], ys[i])
+            i += 1
+            
+        return partition.group(doc_id)
 
     def clusters_for_doc(self, doc_id):
         """Return the size of the cluster the given doc is in at different cutoffs."""
