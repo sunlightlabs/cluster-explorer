@@ -403,6 +403,9 @@ class TestBinarySearch(TestCase):
         self.assertEqual(5, binary_search([7, 6, 5, 4, 3, 2, 1], 3))
         self.assertEqual(7, binary_search([7, 6, 5, 4, 3, 2, 1], 0))
         
+        self.assertEqual(4, binary_search([2, 2, 2, 2, 1], 2))
+        self.assertEqual(5, binary_search([2, 2, 2, 2, 1], 1))
+        
 
 
 if __name__ == '__main__':
