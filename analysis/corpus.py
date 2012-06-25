@@ -371,7 +371,7 @@ class Corpus(object):
             while i < num_edges and sims[i] >= cutoff:
                 partition.merge(xs[i], ys[i])
                 i += 1
-            result.append((cutoff, len(partition.group(doc_id))))
+            result.append((cutoff, partition.representative(doc_id), len(partition.group(doc_id))))
 
         return result
 
