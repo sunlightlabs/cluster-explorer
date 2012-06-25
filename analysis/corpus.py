@@ -432,5 +432,5 @@ class Corpus(object):
             group by phrase_id, t.indexes
         """, dict(corpus_id=self.id, target_doc_id=target_doc_id, doc_set=tuple(doc_set)))
         
-        return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor])
+        return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor.fetchall()])
 
