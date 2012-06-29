@@ -1,3 +1,4 @@
+from collections import defaultdict
 
 try:
     # needed if we're running under PyPy
@@ -200,7 +201,67 @@ class Corpus(object):
 
         return self.cursor.fetchall()
 
-    def representative_phrases(self, doc_ids, limit=10):
+    def representative_phrases_allsql(self, doc_ids, limit=10):
+        """Return phrases representative of given set of documents.
+
+        'Representative' means that the phrases are more common
+        within the document set than they are in the corpus as a whole.
+
+        Result is list of (phrase ID, phrase text, [document IDs in which phrase occurs]).
+        """
+
+        if not doc_ids:
+            return []
+
+        self.cursor.execute("""
+            select p.phrase_id, score, substring(text for (o.indexes[1].end - o.indexes[1].start) from o.indexes[1].start + 1)
+            from (
+                select phrase_id, intersection::float / (%(target_size)s + count(distinct document_id) - intersection) as score, example_doc_id
+                from (
+                    select phrase_id, count(distinct document_id) as intersection, min(document_id) as example_doc_id
+                    from phrase_occurrences
+                    where
+                        corpus_id = %(corpus_id)s
+                        and document_id in %(doc_ids)s
+                        group by phrase_id
+                ) candidate_phrases
+                inner join (select * from phrase_occurrences where corpus_id = %(corpus_id)s) all_docs using (phrase_id)
+                group by phrase_id, intersection, example_doc_id
+                order by score desc
+                limit %(limit)s
+            ) p
+            inner join documents d on d.corpus_id = %(corpus_id)s and d.document_id = p.example_doc_id
+            inner join phrase_occurrences o on o.corpus_id = %(corpus_id)s and o.phrase_id = p.phrase_id and o.document_id = p.example_doc_id
+        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids), target_size=len(doc_ids), limit=limit))
+        
+        return self.cursor.fetchall()
+
+
+    def _get_phrases(self):
+        # retrieve size of each phrase set
+        self.cursor.execute("""
+            select phrase_id, count(distinct document_id)
+            from phrase_occurrences
+            where
+                corpus_id = %(corpus_id)s
+            group by phrase_id
+        """, dict(corpus_id=self.id))
+        
+        phrase_sizes = dict(self.cursor.fetchall())
+        
+        self.cursor.execute("""
+            select document_id, array_agg(phrase_id)
+            from phrase_occurrences
+            where
+                corpus_id = %(corpus_id)s
+            group by document_id
+            """, dict(corpus_id=self.id))
+
+        doc_phrases = dict(self.cursor.fetchall())
+        
+        return (doc_phrases, phrase_sizes)
+
+    def representative_phrases_prefetch(self, phrases_data, doc_ids, limit=10):
         """Return phrases representative of given set of documents.
         
         'Representative' means that the phrases are more common
@@ -209,45 +270,34 @@ class Corpus(object):
         Result is list of (phrase ID, phrase text, [document IDs in which phrase occurs]).
         """
         
-        if not doc_ids:
-            return []
+        target_size = len(doc_ids)
+        (doc_phrases, phrase_sizes) = phrases_data
         
-        sorted_doc_ids = sorted(doc_ids)
-        
-        # retrieve set of documents for every phrase
-        self.cursor.execute("""
-            select phrase_id, array_agg(document_id order by document_id) as doc_ids
-            from (
-                select distinct phrase_id
-                from phrase_occurrences
-                where
-                    corpus_id = %(corpus_id)s
-                    and document_id in %(doc_ids)s
-            ) candidate_phrases
-            inner join (select phrase_id, document_id from phrase_occurrences where corpus_id = %(corpus_id)s) x using (phrase_id)
-            group by phrase_id
-        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
+        phrase_intersections = defaultdict(int)
+        for doc_id in doc_ids:
+            for phrase_id in doc_phrases[doc_id]:
+                phrase_intersections[phrase_id] += 1
         
         # weight each with jaccard measure
-        weighted_phrase_sets = [(phrase_id, jaccard(docs_with_phrase, sorted_doc_ids), docs_with_phrase[0]) for (phrase_id, docs_with_phrase) in self.cursor.fetchall()]
-        weighted_phrase_sets.sort(key=lambda (id, score, example_doc_id): score, reverse=True)
+        weighted_phrase_sets = [(phrase_id, float(intersection) / (phrase_sizes[phrase_id] + target_size - intersection)) for (phrase_id, intersection) in phrase_intersections.iteritems()]
+        weighted_phrase_sets.sort(key=lambda (id, score): score, reverse=True)
         final_phrases = weighted_phrase_sets[:limit]
         
         # pull back example text for the top results
-        self.cursor.execute("""
-            select target.phrase_id, substring(d.text for (o.indexes[1].end - o.indexes[1].start) from o.indexes[1].start + 1)
-            from (values %s) target (corpus_id, phrase_id, document_id)
-            inner join documents d using (corpus_id, document_id)
-            inner join phrase_occurrences o using (corpus_id, phrase_id, document_id)
-        """ % ",".join(["(%s, %s, %s)" % (self.id, phrase_id, example_doc_id) for (phrase_id, score, example_doc_id) in final_phrases]))
+        # self.cursor.execute("""
+        #     select target.phrase_id, substring(d.text for (o.indexes[1].end - o.indexes[1].start) from o.indexes[1].start + 1)
+        #     from (values %s) target (corpus_id, phrase_id, document_id)
+        #     inner join documents d using (corpus_id, document_id)
+        #     inner join phrase_occurrences o using (corpus_id, phrase_id, document_id)
+        # """ % ",".join(["(%s, %s, %s)" % (self.id, phrase_id, example_doc_id) for (phrase_id, score, example_doc_id) in final_phrases]))
+        # 
+        # examples = dict(self.cursor.fetchall())
         
-        examples = dict(self.cursor.fetchall())
-        
-        return [(phrase_id, score, examples[phrase_id]) for (phrase_id, score, example_doc) in final_phrases]
+        return [(phrase_id, score, "") for (phrase_id, score) in final_phrases]
 
 
     def _get_similarities(self, min_sim=None):
-        cached = cache.get('similarities-%s' % self.id)
+        cached = cache.get('analysis.corpus.similarities-%s' % self.id)
         if cached:
             xs = numpy.fromstring(cached[0], numpy.int32)
             ys = numpy.fromstring(cached[1], numpy.int32)
@@ -305,7 +355,24 @@ class Corpus(object):
             
         return partition.sets()
 
-    def hierarchy(self, cutoffs, pruning_size=1):
+    def hierarchy(self, cutoffs, pruning_size, require_summaries):
+        h = cache.get('analysis.corpus.hierarchy-%s-%s' % (",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
+        if not h:
+            h = self._compute_hierarchy(cutoffs, pruning_size, require_summaries)
+            cache.set('analysis.corpus.hierarchy-%s-%s' % (",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
+            return h
+            
+        if require_summaries and h[0]['phrases'] == None:
+            self._compute_hierarchy_summaries(h)
+            
+        return h
+    
+    def _compute_hierarchy_summaries(self, h):
+        for cluster in h:
+            cluster['phrases'] = [text for (id, score, text) in self.representative_phrases_allsql(cluster['members'], 5)]
+            self._compute_hierarchy_summaries(cluster['children'])
+
+    def _compute_hierarchy(self, cutoffs, pruning_size, compute_summaries):
         """Return the hierarchy of clusters, in the format d3 expects.
         
         Cutoffs must be a descending list of floats.
@@ -331,9 +398,12 @@ class Corpus(object):
             new_hierarchy = [
                 {'name':partition.representative(doc_ids[0]),
                  'size': len(doc_ids),
+                 'members': doc_ids,
                  'children': [],
                  'cutoff': c,
-                 'phrases': [text for (id, score, text) in self.representative_phrases(doc_ids, 5)]}
+                 'phrases': [text for (id, score, text) in self.representative_phrases_prefetch(phrase_data, doc_ids, 5)]
+                            if compute_summaries else None
+                }
                 for doc_ids in partition.sets()
                 if len(doc_ids) > pruning_size
             ]
@@ -346,7 +416,7 @@ class Corpus(object):
             hierarchy = new_hierarchy
             
         return hierarchy
-    
+         
     def cluster(self, doc_id, cutoff):
         """Return the set of document IDs in the cluster containing given doc at given cutoff.
         
