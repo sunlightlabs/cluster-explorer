@@ -200,7 +200,6 @@ class Corpus(object):
 
         return self.cursor.fetchall()
 
-    # todo: return example of each phrase occurrence?
     def representative_phrases(self, doc_ids, limit=10):
         """Return phrases representative of given set of documents.
         
@@ -215,30 +214,36 @@ class Corpus(object):
         
         sorted_doc_ids = sorted(doc_ids)
         
-        # note: this query is pulling back the text for all phrases,
-        # even though only `limit` will be needed. If this is slow
-        # may be faster to run a second query to pull back only
-        # the text of the final few phrases.
+        # retrieve set of documents for every phrase
         self.cursor.execute("""
-            with candidate_phrases as (
-                    select corpus_id, phrase_id
-                    from phrase_occurrences
-                    where
-                        corpus_id = %(corpus_id)s
-                        and document_id in %(doc_ids)s
-                    group by corpus_id, phrase_id
-                )
-            select phrase_id, phrase_text, array_agg(document_id order by document_id)
-            from candidate_phrases
-            inner join phrase_occurrences using (corpus_id, phrase_id)
-            inner join phrases using (corpus_id, phrase_id)
-            group by phrase_id, phrase_text
-        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids), limit=limit))
+            select phrase_id, array_agg(document_id order by document_id) as doc_ids
+            from (
+                select distinct phrase_id
+                from phrase_occurrences
+                where
+                    corpus_id = %(corpus_id)s
+                    and document_id in %(doc_ids)s
+            ) candidate_phrases
+            inner join (select phrase_id, document_id from phrase_occurrences where corpus_id = %(corpus_id)s) x using (phrase_id)
+            group by phrase_id
+        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
         
-        weighted_phrase_sets = [(phrase_id, jaccard(docs_with_phrase, sorted_doc_ids), text) for (phrase_id, text, docs_with_phrase) in self.cursor.fetchall()]
-        weighted_phrase_sets.sort(key=lambda (id, score, text): score, reverse=True)
+        # weight each with jaccard measure
+        weighted_phrase_sets = [(phrase_id, jaccard(docs_with_phrase, sorted_doc_ids), docs_with_phrase[0]) for (phrase_id, docs_with_phrase) in self.cursor.fetchall()]
+        weighted_phrase_sets.sort(key=lambda (id, score, example_doc_id): score, reverse=True)
+        final_phrases = weighted_phrase_sets[:limit]
         
-        return weighted_phrase_sets[:limit]
+        # pull back example text for the top results
+        self.cursor.execute("""
+            select target.phrase_id, substring(d.text for (o.indexes[1].end - o.indexes[1].start) from o.indexes[1].start + 1)
+            from (values %s) target (corpus_id, phrase_id, document_id)
+            inner join documents d using (corpus_id, document_id)
+            inner join phrase_occurrences o using (corpus_id, phrase_id, document_id)
+        """ % ",".join(["(%s, %s, %s)" % (self.id, phrase_id, example_doc_id) for (phrase_id, score, example_doc_id) in final_phrases]))
+        
+        examples = dict(self.cursor.fetchall())
+        
+        return [(phrase_id, score, examples[phrase_id]) for (phrase_id, score, example_doc) in final_phrases]
 
 
     def _get_similarities(self, min_sim=None):
@@ -324,9 +329,13 @@ class Corpus(object):
                 i += 1
             
             new_hierarchy = [
-                {'name':representative, 'size': size, 'children': [], 'cutoff': c}
-                for (representative, size) in partition.sets_overview().iteritems()
-                if size > pruning_size
+                {'name':partition.representative(doc_ids[0]),
+                 'size': len(doc_ids),
+                 'children': [],
+                 'cutoff': c,
+                 'phrases': [text for (id, score, text) in self.representative_phrases(doc_ids, 5)]}
+                for doc_ids in partition.sets()
+                if len(doc_ids) > pruning_size
             ]
             
             for prev_cluster in hierarchy:
