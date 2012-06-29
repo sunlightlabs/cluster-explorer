@@ -402,7 +402,7 @@ class Corpus(object):
                  'members': doc_ids,
                  'children': [],
                  'cutoff': c,
-                 'phrases': [text for (id, score, text) in self.representative_phrases_prefetch(phrase_data, doc_ids, 5)]
+                 'phrases': [text for (id, score, text) in self.representative_phrases_allsql(doc_ids, 5)]
                             if compute_summaries else None
                 }
                 for doc_ids in partition.sets()
