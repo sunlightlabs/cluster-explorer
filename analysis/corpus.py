@@ -356,14 +356,15 @@ class Corpus(object):
         return partition.sets()
 
     def hierarchy(self, cutoffs, pruning_size, require_summaries):
-        h = cache.get('analysis.corpus.hierarchy-%s-%s' % (",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
+        h = cache.get('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
         if not h:
             h = self._compute_hierarchy(cutoffs, pruning_size, require_summaries)
-            cache.set('analysis.corpus.hierarchy-%s-%s' % (",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
+            cache.set('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
             return h
             
         if require_summaries and h[0]['phrases'] == None:
             self._compute_hierarchy_summaries(h)
+            cache.set('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
             
         return h
     
