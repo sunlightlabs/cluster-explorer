@@ -168,6 +168,7 @@ class Corpus(object):
         
         return self.cursor.fetchall()
 
+    @profile
     def docs_by_centrality(self, doc_ids):
         (xs, ys, sims) = self._get_similarities()
         
@@ -229,6 +230,7 @@ class Corpus(object):
 
         return self.cursor.fetchall()
 
+    @profile
     def representative_phrases_allsql(self, doc_ids, limit=10):
         """Return phrases representative of given set of documents.
 
@@ -251,7 +253,7 @@ class Corpus(object):
                     where
                         corpus_id = %(corpus_id)s
                         and document_id in %(doc_ids)s
-                        group by phrase_id
+                    group by phrase_id
                 ) candidate_phrases
                 inner join (select * from phrase_occurrences where corpus_id = %(corpus_id)s) all_docs using (phrase_id)
                 group by phrase_id, intersection, example_doc_id
@@ -360,6 +362,7 @@ class Corpus(object):
         # computations much faster in PyPy
         xs = [int(x) for x in xs]
         ys = [int(y) for y in ys]
+        sims = [float(s) for s in sims]
 
         return (xs, ys, sims)
         
@@ -383,6 +386,7 @@ class Corpus(object):
             
         return partition.sets()
 
+    @profile
     def hierarchy(self, cutoffs, pruning_size, require_summaries):
         h = cache.get('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
         if not h:
@@ -396,11 +400,13 @@ class Corpus(object):
             
         return h
     
+    @profile
     def _compute_hierarchy_summaries(self, h):
         for cluster in h:
             cluster['phrases'] = [text for (id, score, text) in self.representative_phrases_allsql(cluster['members'], 5)]
             self._compute_hierarchy_summaries(cluster['children'])
 
+    @profile
     def _compute_hierarchy(self, cutoffs, pruning_size, compute_summaries):
         """Return the hierarchy of clusters, in the format d3 expects.
         
