@@ -194,7 +194,7 @@ class Corpus(object):
         
         doc_count = float(len(doc_ids))
         
-        return [(id, score / doc_count, metadatas[id]) for (id, score) in scores if score > 0]
+        return [(id, metadatas[id], score / doc_count) for (id, score) in scores if score > 0]
         
     
     def docs_by_centrality_sql(self, doc_ids):
