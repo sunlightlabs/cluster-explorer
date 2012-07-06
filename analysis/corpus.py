@@ -167,8 +167,36 @@ class Corpus(object):
         """, [self.id, phrase_id])
         
         return self.cursor.fetchall()
-        
+
     def docs_by_centrality(self, doc_ids):
+        (xs, ys, sims) = self._get_similarities()
+        
+        sum_accumulator = dict([(id, 0) for id in doc_ids])
+
+        for i in range(len(xs)):
+            if xs[i] in sum_accumulator and ys[i] in sum_accumulator:
+                sum_accumulator[xs[i]] += sims[i]
+                sum_accumulator[ys[i]] += sims[i]
+        
+        scores = sum_accumulator.items()
+        scores.sort(key=lambda (id, score): score, reverse=True)
+        
+        self.cursor.execute("""
+            select document_id, metadata
+            from documents
+            where
+                corpus_id = %(corpus_id)s
+                and document_id in %(doc_ids)s
+        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
+        
+        metadatas = dict(self.cursor.fetchall())
+        
+        doc_count = float(len(doc_ids))
+        
+        return [(id, score / doc_count, metadatas[id]) for (id, score) in scores if score > 0]
+        
+    
+    def docs_by_centrality_sql(self, doc_ids):
         """Return the document from given document set with minimum average
         distance to other documents in the set.
         
@@ -295,7 +323,6 @@ class Corpus(object):
         
         return [(phrase_id, score, "") for (phrase_id, score) in final_phrases]
 
-
     def _get_similarities(self, min_sim=None):
         cached = cache.get('analysis.corpus.similarities-%s' % self.id)
         if cached:
@@ -321,7 +348,7 @@ class Corpus(object):
                 xs[i], ys[i], sims[i] = x, y, s
                 i += 1
         
-            cache.set('similarities-%s' % self.id, (xs.tostring(), ys.tostring(), sims.tostring()))
+            cache.set('analysis.corpus.similarities-%s' % self.id, (xs.tostring(), ys.tostring(), sims.tostring()))
 
         if min_sim:
             sims = sims[:binary_search(sims, min_sim)]
@@ -417,7 +444,7 @@ class Corpus(object):
             hierarchy = new_hierarchy
             
         return hierarchy
-         
+
     def cluster(self, doc_id, cutoff):
         """Return the set of document IDs in the cluster containing given doc at given cutoff.
         
