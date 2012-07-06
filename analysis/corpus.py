@@ -12,7 +12,6 @@ from django.db import connection
 from django.core.cache import cache
 
 from partition import Partition
-from cluster.ngrams import jaccard
 from utils import binary_search, profile
 
 # Django connection is a wrappers around psycopg2 connection,
@@ -21,6 +20,24 @@ connection.cursor()
 psycopg2.extras.register_composite('int_bounds', connection.connection)
 psycopg2.extras.register_hstore(connection.connection)
 
+
+
+def get_dual_corpora_by_metadata(key, value):
+    c = connection.cursor()
+    c.execute("select corpus_id, metadata->'parser' from corpora where metadata -> %s = %s", [key, value])
+    corpora = c.fetchall()
+    if not corpora:
+        return None
+        
+    ngram_corpora = [id for (id, parser) in corpora if parser=='4-grams']
+    sentence_corpora = [id for (id, parser) in corpora if parser=='sentence']
+    
+    # preferrence 4-grams for similarity, sentence for phrases, otherwise use arbitrary result
+    return Corpus(
+        corpus_id = ngram_corpora[0] if ngram_corpora else corpora[0][0],
+        sentence_corpus_id = sentence_corpora[0] if sentence_corpora else None
+    )
+    
 
 def get_corpora_by_metadata(key, value):
     """Return a list of Corpus objects having the given key and value.
@@ -37,7 +54,7 @@ def get_corpora_by_metadata(key, value):
 
 class Corpus(object):
     
-    def __init__(self, corpus_id=None, metadata={}):
+    def __init__(self, corpus_id=None, metadata={}, sentence_corpus_id=None):
         """Return wrapper to all database access on the corpus.
         
         If no corpus_id given then new empty corpus created.
@@ -53,6 +70,8 @@ class Corpus(object):
             self.id = corpus_id
             self.cursor.execute("select metadata from corpora where corpus_id = %s", [corpus_id])
             self.metadata = self.cursor.fetchone()[0]
+
+        self.sentence_corpus_id = sentence_corpus_id if sentence_corpus_id else corpus_id
 
 
     ### methods used by DocumentIngester ###    
@@ -262,7 +281,7 @@ class Corpus(object):
             ) p
             inner join documents d on d.corpus_id = %(corpus_id)s and d.document_id = p.example_doc_id
             inner join phrase_occurrences o on o.corpus_id = %(corpus_id)s and o.phrase_id = p.phrase_id and o.document_id = p.example_doc_id
-        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids), target_size=len(doc_ids), limit=limit))
+        """, dict(corpus_id=self.sentence_corpus_id, doc_ids=tuple(doc_ids), target_size=len(doc_ids), limit=limit))
         
         return self.cursor.fetchall()
 
@@ -388,15 +407,15 @@ class Corpus(object):
 
     @profile
     def hierarchy(self, cutoffs, pruning_size, require_summaries):
-        h = cache.get('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
+        h = cache.get('analysis.corpus.hierarchy-%s-%s-%s-%s' % (self.id, self.sentence_corpus_id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
         if not h:
             h = self._compute_hierarchy(cutoffs, pruning_size, require_summaries)
-            cache.set('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
+            cache.set('analysis.corpus.hierarchy-%s-%s-%s-%s' % (self.id, self.sentence_corpus_id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
             return h
             
         if require_summaries and h[0]['phrases'] == None:
             self._compute_hierarchy_summaries(h)
-            cache.set('analysis.corpus.hierarchy-%s-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
+            cache.set('analysis.corpus.hierarchy-%s-%s-%s-%s' % (self.id, self.sentence_corpus_id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
             
         return h
     
