@@ -13,7 +13,7 @@ from django.core.cache import cache
 
 from partition import Partition
 from cluster.ngrams import jaccard
-from utils import binary_search
+from utils import binary_search, profile
 
 # Django connection is a wrappers around psycopg2 connection,
 # but that wrapped object isn't initialized till a call is made.
@@ -323,6 +323,7 @@ class Corpus(object):
         
         return [(phrase_id, score, "") for (phrase_id, score) in final_phrases]
 
+    @profile
     def _get_similarities(self, min_sim=None):
         cached = cache.get('analysis.corpus.similarities-%s' % self.id)
         if cached:

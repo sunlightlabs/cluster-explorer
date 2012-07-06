@@ -1,3 +1,5 @@
+from datetime import datetime
+from django.conf import settings
 
 def execute_file(cursor, filename):
     contents = " ".join([line for line in open(filename, 'r') if line[0:2] != '--'])
@@ -23,4 +25,16 @@ def binary_search(a, x, key=None):
             right = mid
     
     return right
-            
+
+def profile(f):
+    def profiled_f(*args, **opts):
+        print "Entering %s.%s" % (f.__module__, f.__name__)
+        start = datetime.now()
+        result = f(*args, **opts)
+        print "Exiting %s.%s after %s" % (f.__module__, f.__name__, datetime.now() - start)
+        return result
+    
+    if getattr(settings, 'ANALYSIS_PROFILE', False):
+        return profiled_f
+    
+    return f
