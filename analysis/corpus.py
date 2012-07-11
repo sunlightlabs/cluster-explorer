@@ -471,6 +471,7 @@ class Corpus(object):
             
         return hierarchy
 
+    @profile
     def cluster(self, doc_id, cutoff):
         """Return the set of document IDs in the cluster containing given doc at given cutoff.
         

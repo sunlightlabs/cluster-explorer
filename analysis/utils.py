@@ -26,12 +26,13 @@ def binary_search(a, x, key=None):
     
     return right
 
-def profile(f):
+def profile(f):    
     def profiled_f(*args, **opts):
-        print "Entering %s.%s" % (f.__module__, f.__name__)
+        f_name = "%s.%s.%s" % (f.__module__, args[0].__class__.__name__ if args else None, f.__name__)
+        print "Entering %s" % f_name
         start = datetime.now()
         result = f(*args, **opts)
-        print "Exiting %s.%s after %s" % (f.__module__, f.__name__, datetime.now() - start)
+        print "Exiting %s after %s" % (f_name, datetime.now() - start)
         return result
     
     if getattr(settings, 'ANALYSIS_PROFILE', False):
