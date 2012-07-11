@@ -39,3 +39,37 @@ def profile(f):
         return profiled_f
     
     return f
+
+
+def overlap(x, y):
+    """Return the size of the intersection of two sorted arrays."""
+    
+    i = 0
+    j = 0
+
+    c = 0
+
+    len_x = len(x)
+    len_y = len(y)
+
+    while i < len_x and j < len_y:
+        if x[i] > y[j]:
+            j += 1
+        elif x[i] < y[j]:
+            i += 1
+        else: # x[i] == y[j]
+            c += 1
+            i += 1
+            j += 1
+
+    return c
+
+
+def jaccard(x, y):
+    """Return the jaccard measure of two sets, represented as sorted arrays of integers."""
+    
+    intersection_size = overlap(x, y)
+    union_size = len(x) + len(y) - intersection_size
+
+    return float(intersection_size) / union_size if union_size != 0 else 0
+

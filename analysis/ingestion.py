@@ -5,8 +5,7 @@ import sys
 
 from parser import sentence_parse
 from phrases import PhraseSequencer
-from cluster.ngrams import jaccard
-from corpus import Corpus
+from utils import jaccard
 
 
 
