@@ -20,7 +20,7 @@ def _encode(s):
 
 class DocumentIngester(object):
     
-    def __init__(self, corpus, parser=sentence_parse):
+    def __init__(self, corpus, parser=sentence_parse, compute_similarities=True):
         """Return a new ingester for the corpus.
         
         parser may be sentence_parse or ngram_parser(n)
@@ -31,6 +31,7 @@ class DocumentIngester(object):
         
         self.corpus = corpus
         self.parser = parser
+        self.compute_similarities = compute_similarities
         
         max_doc_id = corpus.max_doc_id()
         self.next_id = max_doc_id + 1 if max_doc_id is not None else 0
@@ -102,9 +103,9 @@ class DocumentIngester(object):
         self.sequencer.upload_new_phrases()
         self._upload_new_documents()
         
-        print "computing similarities..."
-    
-        self._compute_similarities(new_doc_ids)
+        if self.compute_similarities:
+            print "computing similarities..."
+            self._compute_similarities(new_doc_ids)
 
     @staticmethod
     def _pairs_for_comparison(all_ids, new_ids):
