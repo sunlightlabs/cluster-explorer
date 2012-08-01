@@ -74,6 +74,10 @@ class Corpus(object):
         self.sentence_corpus_id = sentence_corpus_id if sentence_corpus_id else corpus_id
 
 
+    def num_docs(self):
+        self.cursor.execute("select count(*) from documents where corpus_id=%s", [self.id])
+        return self.cursor.fetchone()[0]
+
     ### methods used by DocumentIngester ###    
         
     def max_doc_id(self):
@@ -108,6 +112,62 @@ class Corpus(object):
         self.cursor.execute("select phrase_text, phrase_id from phrases where corpus_id = %s", [self.id])
         return dict(self.cursor)
     
+    def delete(self, doc_ids):
+        """Remove all data associated with given doc IDs."""
+
+        # psycopg2 requires a tuple
+        if not isinstance(doc_ids, tuple):
+            doc_ids = tuple(doc_ids)
+
+        self.cursor.execute("""
+            delete from similarities
+            where
+                corpus_id = %(corpus_id)s
+                and (low_document_id in %(doc_ids)s
+                    or high_document_id in %(doc_ids)s)
+        """, dict(corpus_id=self.id, doc_ids=doc_ids))
+
+        self.cursor.execute("""
+            delete from phrase_occurrences
+            where
+                corpus_id = %(corpus_id)s
+                and document_id in %(doc_ids)s
+        """, dict(corpus_id=self.id, doc_ids=doc_ids))
+
+        self.cursor.execute("""
+            delete from phrases
+            where
+                corpus_id = %(corpus_id)s
+                and phrase_id not in (
+                    select distinct phrase_id
+                    from phrase_occurrences
+                    where
+                        corpus_id = %(corpus_id)s
+                )
+        """, dict(corpus_id=self.id, doc_ids=doc_ids))
+
+        self.cursor.execute("""
+            delete from documents
+            where
+                corpus_id = %(corpus_id)s
+                and document_id in %(doc_ids)s
+        """, dict(corpus_id=self.id, doc_ids=doc_ids))
+
+    def delete_by_metadata(self, key, values):
+        """Remove all documents where a given key is in the given values."""
+
+        self.cursor.execute("""
+            select document_id
+            from documents
+            where
+                corpus_id = %(corpus_id)s
+                and metadata -> %(key)s in %(values)s
+        """, dict(corpus_id=self.id, key=key, values=tuple(values)))
+
+        doc_ids = self.cursor.fetchall()
+
+        self.delete(doc_ids)
+
     
     ### methods used by clients ###
     
