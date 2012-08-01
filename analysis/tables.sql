@@ -2,7 +2,6 @@
 
 create table corpora (
     corpus_id serial PRIMARY KEY,
-    -- to add: parse type
     metadata hstore
 );
 
