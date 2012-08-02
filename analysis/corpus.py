@@ -224,7 +224,7 @@ class Corpus(object):
                 group by phrase_id, phrase_text
                 order by count(distinct document_id) desc
                 limit %(limit)s) x;
-        """, dict(corpus_id=self.id, limit=limit))
+        """, dict(corpus_id=self.sentence_corpus_id, limit=limit))
         
         return self.cursor.fetchall()
 
