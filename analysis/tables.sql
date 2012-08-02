@@ -10,6 +10,7 @@ create table documents (
     document_id integer,
     text text,
     -- to add: ingestion date
+    -- to add: index on document ID metadata?
     metadata hstore,
     PRIMARY KEY (corpus_id, document_id)
 );

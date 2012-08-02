@@ -24,7 +24,8 @@ def doc_metadata(doc):
 		'docket_id': doc.docket_id,
 		'type': doc.type,
 		'created': unicode(doc.created),
-		'last_seen': unicode(doc.last_seen)
+		'last_seen': unicode(doc.last_seen),
+        'ingested': unicode(datetime.now())
 	}
 
 

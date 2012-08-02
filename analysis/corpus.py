@@ -110,7 +110,7 @@ class Corpus(object):
     
     def all_phrases(self):
         self.cursor.execute("select phrase_text, phrase_id from phrases where corpus_id = %s", [self.id])
-        return dict(self.cursor)
+        return dict(self.cursor.fetchall())
     
     def delete(self, doc_ids):
         """Remove all data associated with given doc IDs."""
@@ -166,7 +166,8 @@ class Corpus(object):
 
         doc_ids = self.cursor.fetchall()
 
-        self.delete(doc_ids)
+        if len(doc_ids) > 0:
+            self.delete(doc_ids)
 
     
     ### methods used by clients ###
@@ -418,7 +419,6 @@ class Corpus(object):
                     from similarities
                     where
                         corpus_id = %s
-                        and similarity >= 0.5 -- todo: lower bound should be set at ingestion time, not here
                     order by similarity desc
             """, [self.id])
         
