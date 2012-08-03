@@ -14,13 +14,13 @@ from regs_models import Docket, Doc
 
 
 def doc_text(doc):
-	return "\n".join([view.as_text() for view in doc.views])
+	return "\n".join([view.as_text() for view in doc.views])[:10000]
 
 def doc_metadata(doc):
 	return {
 		'document_id': doc.id,
 		'title': doc.title,
-		'agency': doc.agency,
+		'agency_id': doc.agency,
 		'docket_id': doc.docket_id,
 		'type': doc.type,
 		'created': unicode(doc.created),
@@ -70,6 +70,9 @@ def ingest_docket(docket):
 
     print "Found %s documents for deletion or update, %s documents for insertion." % (len(deletions), len(insertions))
 
+    if not insertions and not deletions:
+        return
+
     with transaction.commit_on_success():
         ingest_single_parse(docket, deletions, insertions, 'sentence')
         ingest_single_parse(docket, deletions, insertions, '4-gram')
@@ -90,7 +93,7 @@ def ingest_single_parse(docket, deletions, insertions, parser):
     parsed_corpora = [c for c in corpora if c.metadata.get('parser') == parser]
 
     if len(parsed_corpora) == 0:
-        c = Corpus(metadata=dict(docket=docket.id, agency=docket.agency, parser=parser))
+        c = Corpus(metadata=dict(docket_id=docket.id, agency_id=docket.agency, parser=parser))
         print "Created new corpus #%s for %s parse." % (c.id, parser)
     
     elif len(parsed_corpora) == 1:
