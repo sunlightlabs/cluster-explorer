@@ -29,7 +29,7 @@ def get_dual_corpora_by_metadata(key, value):
     if not corpora:
         return None
         
-    ngram_corpora = [id for (id, parser) in corpora if parser=='4-grams']
+    ngram_corpora = [id for (id, parser) in corpora if parser=='4-gram']
     sentence_corpora = [id for (id, parser) in corpora if parser=='sentence']
     
     # preferrence 4-grams for similarity, sentence for phrases, otherwise use arbitrary result
