@@ -63,11 +63,15 @@ def ingest_docket(docket):
     print "Loading docket %s at %s..." % (docket.id, datetime.now())
 
     deletions = Doc.objects(Q(docket_id=docket.id) & (Q(in_cluster_db=False) | Q(deleted=True))).scalar('id')
-    insertions = [{
-                    'text': doc_text(d),
-                    'metadata': doc_metadata(d)
-                  } for d in Doc.objects(docket_id=docket.id, deleted=False, in_cluster_db=False)]
 
+    insertions = []
+    for d in Doc.objects(docket_id=docket.id, deleted=False, in_cluster_db=False, type='public_submission'):
+        canonical_view = d.canonical_view()
+        if canonical_view:
+            text = canonical_view.as_text()
+            if text:
+                insertions.append(dict(text=text, metadata=doc_metadata(d)))
+    
     print "Found %s documents for deletion or update, %s documents for insertion." % (len(deletions), len(insertions))
 
     if not insertions and not deletions:
