@@ -12,9 +12,8 @@ from analysis.parser import ngram_parser, sentence_parse
 
 from regs_models import Docket, Doc
 
-
 def doc_text(doc):
-	return "\n".join([view.as_text() for view in doc.views])[:10000]
+    return "\n".join([doc.canonical_view().as_text()] + [a.canonical_view().as_text() for a in doc.attachments])[:10000]
 
 def doc_metadata(doc):
 	return {
@@ -23,6 +22,8 @@ def doc_metadata(doc):
 		'agency_id': doc.agency,
 		'docket_id': doc.docket_id,
 		'type': doc.type,
+        'submitter_name': " ".join([doc.details.get('First_Name', ''), doc.details.get('Last_Name', '')]),
+        'submitter_organization': doc.details.get('Organization_Name', ''), 
 		'created': unicode(doc.created),
 		'last_seen': unicode(doc.last_seen),
         'ingested': unicode(datetime.now())
@@ -64,13 +65,10 @@ def ingest_docket(docket):
 
     deletions = Doc.objects(Q(docket_id=docket.id) & (Q(in_cluster_db=False) | Q(deleted=True))).scalar('id')
 
-    insertions = []
-    for d in Doc.objects(docket_id=docket.id, deleted=False, in_cluster_db=False, type='public_submission'):
-        canonical_view = d.canonical_view()
-        if canonical_view:
-            text = canonical_view.as_text()
-            if text:
-                insertions.append(dict(text=text, metadata=doc_metadata(d)))
+    insertions = [
+        dict(text=doc_text(d), metadata=doc_metadata(d))
+        for d in Doc.objects(docket_id=docket.id, deleted=False, in_cluster_db=False, type='public_submission')]
+
     
     print "Found %s documents for deletion or update, %s documents for insertion." % (len(deletions), len(insertions))
 
