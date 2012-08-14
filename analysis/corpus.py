@@ -1,4 +1,3 @@
-from collections import defaultdict
 
 try:
     # needed if we're running under PyPy
@@ -186,67 +185,6 @@ class Corpus(object):
         (text, metadata) = self.cursor.fetchone()
         return dict(text=text, metadata=metadata)
         
-    def docs_by_metadata(self, key, value):
-        """Return IDs of all documents matching the given metadata key/value."""
-        
-        self.cursor.execute("""
-            select document_id
-            from documents
-            where
-                corpus_id = %s
-                and metadata -> %s = %s
-        """, [self.id, key, value])
-
-        return [id for (id,) in self.cursor.fetchall()]
-    
-    def common_phrases(self, limit=10):
-        """Return the most frequent phrases in corpus.
-        
-        Result is a list of (phrase ID, phrase text, count),
-        sorted by count.
-        """
-        
-        self.cursor.execute("""
-            select phrase_id as found_phrase, count,
-                (select substring(text for (indexes[1].end - indexes[1].start) from indexes[1].start + 1)
-                from phrase_occurrences i
-                inner join documents using (corpus_id, document_id)
-                where
-                    corpus_id = %(corpus_id)s
-                    and x.phrase_id = i.phrase_id
-                limit 1) as example_phrase
-            from (
-                select phrase_id, count(distinct document_id)
-                from phrase_occurrences o
-                inner join phrases using (corpus_id, phrase_id)
-                where
-                    corpus_id = %(corpus_id)s
-                group by phrase_id, phrase_text
-                order by count(distinct document_id) desc
-                limit %(limit)s) x;
-        """, dict(corpus_id=self.sentence_corpus_id, limit=limit))
-        
-        return self.cursor.fetchall()
-
-    def docs_containing_phrase(self, phrase_id):
-        """Return all documents containing the given phrase.
-        
-        Result is a list of (document ID, (start offset, end offset), document text preview),
-        sorted by document ID.
-        """
-        
-        self.cursor.execute("""
-            select document_id, indexes, substring(text for (indexes[1].end - indexes[1].start) from indexes[1].start + 1) as sample
-            from documents
-            inner join phrase_occurrences using (corpus_id, document_id)
-            where
-                corpus_id = %s
-                and phrase_id = %s
-            group by document_id, indexes, sample
-            order by document_id
-        """, [self.id, phrase_id])
-        
-        return self.cursor.fetchall()
 
     @profile
     def docs_by_centrality(self, doc_ids):
@@ -276,39 +214,6 @@ class Corpus(object):
         
         return [(id, metadatas[id], score / doc_count) for (id, score) in scores if score > 0]
         
-    
-    def docs_by_centrality_sql(self, doc_ids):
-        """Return the document from given document set with minimum average
-        distance to other documents in the set.
-        
-        Document set may be any arbitrary collection of IDs from the corpus.
-        
-        Result is (document ID, document text).
-        """
-        
-        # SQL doesn't support empty lists with IN operator, so check here to avoid SQL error
-        if not doc_ids:
-            return None
-            
-        self.cursor.execute("""
-            with included_sims as (
-                select unnest(ARRAY[low_document_id, high_document_id]) as document_id, similarity
-                from similarities
-                where
-                    corpus_id = %(corpus_id)s
-                    and low_document_id in %(doc_ids)s
-                    and high_document_id in %(doc_ids)s
-            )
-            select document_id, metadata, sum(similarity)::float / %(num_docs)s
-            from included_sims
-            inner join documents using (document_id)
-            where
-                documents.corpus_id = %(corpus_id)s
-            group by document_id, metadata
-            order by sum(similarity) desc
-        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids), num_docs=len(doc_ids)))
-
-        return self.cursor.fetchall()
 
     @profile
     def representative_phrases_allsql(self, doc_ids, limit=10):
@@ -371,39 +276,6 @@ class Corpus(object):
         
         return (doc_phrases, phrase_sizes)
 
-    def representative_phrases_prefetch(self, phrases_data, doc_ids, limit=10):
-        """Return phrases representative of given set of documents.
-        
-        'Representative' means that the phrases are more common
-        within the document set than they are in the corpus as a whole.
-        
-        Result is list of (phrase ID, phrase text, [document IDs in which phrase occurs]).
-        """
-        
-        target_size = len(doc_ids)
-        (doc_phrases, phrase_sizes) = phrases_data
-        
-        phrase_intersections = defaultdict(int)
-        for doc_id in doc_ids:
-            for phrase_id in doc_phrases[doc_id]:
-                phrase_intersections[phrase_id] += 1
-        
-        # weight each with jaccard measure
-        weighted_phrase_sets = [(phrase_id, float(intersection) / (phrase_sizes[phrase_id] + target_size - intersection)) for (phrase_id, intersection) in phrase_intersections.iteritems()]
-        weighted_phrase_sets.sort(key=lambda (id, score): score, reverse=True)
-        final_phrases = weighted_phrase_sets[:limit]
-        
-        # pull back example text for the top results
-        # self.cursor.execute("""
-        #     select target.phrase_id, substring(d.text for (o.indexes[1].end - o.indexes[1].start) from o.indexes[1].start + 1)
-        #     from (values %s) target (corpus_id, phrase_id, document_id)
-        #     inner join documents d using (corpus_id, document_id)
-        #     inner join phrase_occurrences o using (corpus_id, phrase_id, document_id)
-        # """ % ",".join(["(%s, %s, %s)" % (self.id, phrase_id, example_doc_id) for (phrase_id, score, example_doc_id) in final_phrases]))
-        # 
-        # examples = dict(self.cursor.fetchall())
-        
-        return [(phrase_id, score, "") for (phrase_id, score) in final_phrases]
 
     @profile
     def _get_similarities(self, min_sim=None):
@@ -569,35 +441,7 @@ class Corpus(object):
 
         return result
 
-    def similar_docs(self, doc_id, min_similarity=0.5):
-        """Return all documents similar to the given document.
-        
-        Result is list of (document ID, similarity), sorted by similarity.
-        """
 
-        self.cursor.execute("""
-            with recursive cluster (doc_id) as (
-                    select %(target_doc_id)s
-                union
-                    select case when doc_id = low_document_id then high_document_id else low_document_id end
-                    from similarities
-                    inner join cluster on doc_id = low_document_id or doc_id = high_document_id
-                    where
-                        corpus_id = %(corpus_id)s
-                        and similarity >= %(min_similarity)s
-            )
-            select doc_id, similarity
-            from cluster
-            inner join similarities on
-                (low_document_id = %(target_doc_id)s and high_document_id = doc_id)
-                or (low_document_id = doc_id and high_document_id = %(target_doc_id)s)
-            where
-                corpus_id = %(corpus_id)s
-            order by similarity desc
-        """, dict(corpus_id=self.id, target_doc_id=doc_id, min_similarity=min_similarity))
-
-        return self.cursor.fetchall()
-    
     def phrase_overlap(self, target_doc_id, doc_set):
         """Return the number of times each phrase in the given document
         is used in the document set.

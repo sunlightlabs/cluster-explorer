@@ -90,7 +90,7 @@ def ingest_single_parse(docket, deletions, insertions, parser):
     if parser not in ('sentence', '4-gram'):
         raise "Parser must be one of 'sentence' or '4-gram'. Got '%s'." % parser
 
-    corpora = get_corpora_by_metadata('docket', docket.id)
+    corpora = get_corpora_by_metadata('docket_id', docket.id)
 
     parsed_corpora = [c for c in corpora if c.metadata.get('parser') == parser]
 
