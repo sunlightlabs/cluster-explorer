@@ -1,8 +1,6 @@
 from datetime import datetime
 from optparse import make_option
 
-from mongoengine.queryset import Q
-
 from django.db import transaction
 from django.core.management.base import BaseCommand
 
@@ -30,47 +28,31 @@ def doc_metadata(doc):
 	}
 
 
-# two check methods aren't used in command.
 # can be run from shell before or after ingestion to test integrity
+def print_stats(docket_id):
+    print "MongoDB has\t%s in_cluster_db=True, deleted=False;\t%s in_cluster_db=False,deleted=False" % \
+        (Doc.objects(docket_id=docket_id,in_cluster_db=True,deleted=False).count(),
+        Doc.objects(docket_id=docket_id,in_cluster_db=False,deleted=False).count())
+    print "\t\t%s in_cluster_db=True, deleted=True;\t%s in_cluster_db=False,deleted=True" % \
+        (Doc.objects(docket_id=docket_id,in_cluster_db=True,deleted=True).count(),
+        Doc.objects(docket_id=docket_id,in_cluster_db=False,deleted=True).count())
 
-def check_pre_ingestion_counts(corpus_id, docket_id):
-    mongo_analyzed = Doc.objects(docket_id=docket_id, in_cluster_db=True, deleted=False).count()
-    mongo_unanalyzed = Doc.objects(docket_id=docket_id, in_cluster_db=False, deleted=False).count()
-    mongo_deleted = Doc.objects(docket_id=docket_id, deleted=True).count()
 
-    postgres_analyzed = Corpus(corpus_id).num_docs()
-
-    print "MongoDB has %s analyzed documents, %s unanalyzed documents and %s deleted documents. Postgres has %s analyzed documents." % (mongo_analyzed, mongo_unanalyzed, mongo_deleted, postgres_analyzed)
-    
-    if mongo_analyzed != postgres_analyzed:
-        print "WARNING: MongoDB and Postgres analyzed counts out of sync!"
-
-def check_post_ingestion_counts(corpus_id, docket_id):
-    mongo_analyzed = Doc.objects(docket_id=docket_id, in_cluster_db=True, deleted=False).count()
-    mongo_unanalyzed = Doc.objects(docket_id=docket_id, in_cluster_db=False, deleted=False).count()
-    mongo_deleted = Doc.objects(docket_id=docket_id, deleted=True).count()
-
-    postgres_analyzed = Corpus(corpus_id).num_docs()
-
-    print "MongoDB has %s analyzed documents, %s unanalyzed documents and %s deleted documents. Postgres has %s analyzed documents." % (mongo_analyzed, mongo_unanalyzed, mongo_deleted, postgres_analyzed)
-    
-    if mongo_analyzed != postgres_analyzed:
-        print "WARNING: MongoDB and Postgres analyzed counts out of sync!"
-    if mongo_unanalyzed != 0:
-        print "WARNING: MongoDB still has unalayzed documents!"
+    for corpus in get_corpora_by_metadata('docket_id', docket_id):
+            print "Corpus %s (%s) has %s documents." % (corpus.id, corpus.metadata, corpus.num_docs())
 
 
 def ingest_docket(docket):
     print "Loading docket %s at %s..." % (docket.id, datetime.now())
 
-    deletions = Doc.objects(Q(docket_id=docket.id) & (Q(in_cluster_db=False) | Q(deleted=True))).scalar('id')
+    deletions = list(Doc.objects(docket_id=docket.id, deleted=True, in_cluster_db=True, type='public_submission').scalar('id'))
 
     insertions = [
         dict(text=doc_text(d), metadata=doc_metadata(d))
         for d in Doc.objects(docket_id=docket.id, deleted=False, in_cluster_db=False, type='public_submission')]
 
     
-    print "Found %s documents for deletion or update, %s documents for insertion." % (len(deletions), len(insertions))
+    print "Found %s documents for deletion, %s documents for insertion or update." % (len(deletions), len(insertions))
 
     if not insertions and not deletions:
         return
@@ -83,7 +65,11 @@ def ingest_docket(docket):
     update_count = Doc.objects(id__in=[d['metadata']['document_id'] for d in insertions]) \
                       .update(safe_update=True, set__in_cluster_db=True)
     if update_count != len(insertions):
-        print "ERROR: %s documents inserted into Postgres, but only %s documents marked as analyzed in MongoDB." % (len(insertions, update_count))
+        print "ERROR: %s documents inserted into Postgres, but only %s documents marked as analyzed in MongoDB." % (len(insertions), update_count)
+    update_count = Doc.objects(id__in=deletions) \
+                      .update(safe_update=True, set__in_cluster_db=False)
+    if update_count != len(deletions):
+        print "ERROR: %s documents deleted in Postgres, but only %s documents marked as deleted in MongoDB." % (len(deletions), update_count)
 
 
 def ingest_single_parse(docket, deletions, insertions, parser):
@@ -103,7 +89,7 @@ def ingest_single_parse(docket, deletions, insertions, parser):
         print "Updating existing corpus #%s for %s parse." % (c.id, parser)
         
         print "Deleting documents at %s..." % datetime.now()
-        c.delete_by_metadata('document_id', deletions)
+        c.delete_by_metadata('document_id', deletions + [d['metadata']['document_id'] for d in insertions])
     
     else:
         raise "More than one sentence parse for docket %s found. Shouldn't happen--will need ot manually remove extra corpora." % docket.id
