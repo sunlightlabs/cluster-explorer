@@ -102,10 +102,38 @@ def ingest_single_parse(docket, deletions, insertions, parser):
     i.ingest(insertions)
 
 
+def repair_missing_docket(docket):
+    """Recreate any dockets that Mongo thinks are analyzed already but aren't in Postgres.
+
+    Note that this is a very limited form or repair, corresponding to the particular
+    situation in which some malformed dockets have been deleted from Postgres by
+    hand, but not marked as such on the Mongo side. As other particular problems
+    arise we may add different repair methods.
+    """
+
+    # only repair if MongoDB thinks that something should be in Postgres already
+    if Doc.objects(docket_id=docket.id, in_cluster_db=True).count() == 0:
+        return
+
+    # does docket exist at all?
+    corpora = get_corpora_by_metadata('docket_id', docket.id)
+    
+    if len(corpora) == 0:
+        # neither parse exists, mark as unclustered in Mongo
+        update_count = Doc.objects(docket_id=docket.id, in_cluster_db=True).update(safe_update=True, set__in_cluster_db=False)
+        print "Docket %s missing in Postgres. Marked %s documents with in_cluster_db=False." % (docket.id, update_count)
+    elif len(corpora) == 1 or len(corpora) > 2:
+        # we have a single or multiple parses...that's something unexpected that we can't fix automatically
+        raise "Found %s corpora for docket %s. Expected either 0 or 2 corpora. Must fix by hand." % (len(corpora), docket.id)
+
+    # both parses exist, everything's fine
+
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('-a', "--agency", dest="agency"),
         make_option('-d', "--docket", dest="docket"),
+        make_option('-r', "--repair", dest='repair', action="store_true"),
     )
 
     @transaction.commit_manually
@@ -120,6 +148,9 @@ class Command(BaseCommand):
         print "Beginning loading %s dockets at %s..." % (len(dockets), datetime.now())
 
         for docket in dockets:
+            if options.get('repair'):
+                repair_missing_docket(docket)
+
             ingest_docket(docket)
 
         print "Done."
