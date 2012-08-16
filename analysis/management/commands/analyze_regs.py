@@ -122,6 +122,7 @@ def repair_missing_docket(docket):
         # neither parse exists, mark as unclustered in Mongo
         update_count = Doc.objects(docket_id=docket.id, in_cluster_db=True).update(safe_update=True, set__in_cluster_db=False)
         print "Docket %s missing in Postgres. Marked %s documents with in_cluster_db=False." % (docket.id, update_count)
+        ingest_docket(docket)
     elif len(corpora) == 1 or len(corpora) > 2:
         # we have a single or multiple parses...that's something unexpected that we can't fix automatically
         raise "Found %s corpora for docket %s. Expected either 0 or 2 corpora. Must fix by hand." % (len(corpora), docket.id)
@@ -150,8 +151,8 @@ class Command(BaseCommand):
         for docket in dockets:
             if options.get('repair'):
                 repair_missing_docket(docket)
-
-            ingest_docket(docket)
+            else:
+                ingest_docket(docket)
 
         print "Done."
 
