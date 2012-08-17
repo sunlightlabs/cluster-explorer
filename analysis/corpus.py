@@ -185,6 +185,18 @@ class Corpus(object):
         (text, metadata) = self.cursor.fetchone()
         return dict(text=text, metadata=metadata)
         
+    def docs_by_metadata(self, key, value):
+        """Return IDs of all documents matching the given metadata key/value."""
+        
+        self.cursor.execute("""
+            select document_id
+            from documents
+            where
+                corpus_id = %s
+                and metadata -> %s = %s
+        """, [self.id, key, value])
+
+        return [id for (id,) in self.cursor.fetchall()]
 
     @profile
     def docs_by_centrality(self, doc_ids):
