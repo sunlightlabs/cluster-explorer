@@ -281,8 +281,8 @@ class Corpus(object):
     def _get_similarities(self, min_sim=None):
         cached = cache.get('analysis.corpus.similarities-%s' % self.id)
         if cached:
-            xs = numpy.fromstring(cached[0], numpy.int32)
-            ys = numpy.fromstring(cached[1], numpy.int32)
+            xs = numpy.fromstring(cached[0], numpy.uint32)
+            ys = numpy.fromstring(cached[1], numpy.uint32)
             sims = numpy.fromstring(cached[2], numpy.float32)
         
         else:
