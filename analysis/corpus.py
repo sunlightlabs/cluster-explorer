@@ -1,24 +1,16 @@
 
-try:
-    # needed if we're running under PyPy
-    import numpypy
-except:
-    pass
-import numpy
-
 import psycopg2.extras
 from django.db import connection
 from django.core.cache import cache
 
 from partition import Partition
-from utils import binary_search, profile
+from utils import profile
 
 # Django connection is a wrappers around psycopg2 connection,
 # but that wrapped object isn't initialized till a call is made.
 connection.cursor()
 psycopg2.extras.register_composite('int_bounds', connection.connection)
 psycopg2.extras.register_hstore(connection.connection)
-
 
 
 def get_dual_corpora_by_metadata(key, value):
@@ -71,6 +63,9 @@ class Corpus(object):
             self.metadata = self.cursor.fetchone()[0]
 
         self.sentence_corpus_id = sentence_corpus_id if sentence_corpus_id else corpus_id
+
+        # hierarchy settings are fixed here, but client could in theory change them if desred
+        self.hierarchy_cutoffs = [0.9, 0.8, 0.7, 0.6, 0.5]
 
 
     def num_docs(self):
@@ -169,7 +164,7 @@ class Corpus(object):
             self.delete(doc_ids)
 
     
-    ### methods used by clients ###
+    ### document retrieval methods for clients ###
     
     def doc(self, doc_id):
         """Return the text and metadata of a given document."""
@@ -184,6 +179,19 @@ class Corpus(object):
         
         (text, metadata) = self.cursor.fetchone()
         return dict(text=text, metadata=metadata)
+
+    def doc_metadatas(self, doc_ids):
+        """Return a list of doc_ids and metadata values for each doc ID."""
+
+        self.cursor.execute("""
+            select document_id, metadata
+            from documents
+            where
+                corpus_id = %s
+                and document_id in %s
+        """, [self.id, tuple(doc_ids)])
+
+        return self.cursor.fetchall()
         
     def docs_by_metadata(self, key, value):
         """Return IDs of all documents matching the given metadata key/value."""
@@ -198,37 +206,11 @@ class Corpus(object):
 
         return [id for (id,) in self.cursor.fetchall()]
 
-    @profile
-    def docs_by_centrality(self, doc_ids):
-        (xs, ys, sims) = self._get_similarities()
-        
-        sum_accumulator = dict([(id, 0) for id in doc_ids])
 
-        for i in range(len(xs)):
-            if xs[i] in sum_accumulator and ys[i] in sum_accumulator:
-                sum_accumulator[xs[i]] += sims[i]
-                sum_accumulator[ys[i]] += sims[i]
-        
-        scores = sum_accumulator.items()
-        scores.sort(key=lambda (id, score): score, reverse=True)
-        
-        self.cursor.execute("""
-            select document_id, metadata
-            from documents
-            where
-                corpus_id = %(corpus_id)s
-                and document_id in %(doc_ids)s
-        """, dict(corpus_id=self.id, doc_ids=tuple(doc_ids)))
-        
-        metadatas = dict(self.cursor.fetchall())
-        
-        doc_count = float(len(doc_ids))
-        
-        return [(id, metadatas[id], score / doc_count) for (id, score) in scores if score > 0]
-        
+    ### methods returning information about clustering ###
 
     @profile
-    def representative_phrases_allsql(self, doc_ids, limit=10):
+    def _representative_phrases(self, doc_ids, limit=10):
         """Return phrases representative of given set of documents.
 
         'Representative' means that the phrases are more common
@@ -264,142 +246,79 @@ class Corpus(object):
         return self.cursor.fetchall()
 
 
-    def _get_phrases(self):
-        # retrieve size of each phrase set
+    @profile
+    def _get_similarities(self):
         self.cursor.execute("""
-            select phrase_id, count(distinct document_id)
-            from phrase_occurrences
-            where
-                corpus_id = %(corpus_id)s
-            group by phrase_id
-        """, dict(corpus_id=self.id))
-        
-        phrase_sizes = dict(self.cursor.fetchall())
-        
-        self.cursor.execute("""
-            select document_id, array_agg(phrase_id)
-            from phrase_occurrences
-            where
-                corpus_id = %(corpus_id)s
-            group by document_id
-            """, dict(corpus_id=self.id))
+                select low_document_id, high_document_id, similarity
+                from similarities
+                where
+                    corpus_id = %s
+                order by similarity desc
+        """, [self.id])
 
-        doc_phrases = dict(self.cursor.fetchall())
-        
-        return (doc_phrases, phrase_sizes)
+        return list(self.cursor.fetchall())
 
 
     @profile
-    def _get_similarities(self, min_sim=None):
-        cached = cache.get('analysis.corpus.similarities-%s' % self.id)
-        if cached:
-            xs = numpy.fromstring(cached[0], numpy.uint32)
-            ys = numpy.fromstring(cached[1], numpy.uint32)
-            sims = numpy.fromstring(cached[2], numpy.float32)
-        
-        else:
-            self.cursor.execute("""
-                    select low_document_id, high_document_id, similarity
-                    from similarities
-                    where
-                        corpus_id = %s
-                    order by similarity desc
-            """, [self.id])
-        
-            i = 0
-            xs = numpy.empty(self.cursor.rowcount, numpy.uint32)
-            ys = numpy.empty(self.cursor.rowcount, numpy.uint32)
-            sims = numpy.empty(self.cursor.rowcount, numpy.float32)
-            for (x, y, s) in self.cursor.fetchall():
-                xs[i], ys[i], sims[i] = x, y, s
-                i += 1
-        
-            cache.set('analysis.corpus.similarities-%s' % self.id, (xs.tostring(), ys.tostring(), sims.tostring()))
-
-        if min_sim:
-            sims = sims[:binary_search(sims, min_sim)]
-            xs = xs[:len(sims)]
-            ys = ys[:len(sims)]
-        
-        # conversion back to Python ints makes follow up
-        # computations much faster in PyPy
-        xs = [int(x) for x in xs]
-        ys = [int(y) for y in ys]
-        sims = [float(s) for s in sims]
-
-        return (xs, ys, sims)
-        
-    def clusters(self, min_similarity):
-        """Return clustering of subset of corpus with similarity above given threshold.
-        
-        Two documents are clustered if they are linked through a sequence of documents
-        with similarity above the given threshold. Put another way, the clustering is
-        the set of connected components of the similarity graph above the cutoff.
-        
-        Result is a list of list of document IDs.
-        """
-        
-        xs, ys, _ = self._get_similarities(min_similarity)
-        vertices = set(xs + ys)
-        
-        partition = Partition(vertices)
-        
-        for i in range(len(xs)):
-            partition.merge(xs[i], ys[i])
-            
-        return partition.sets()
-
-    @profile
-    def hierarchy(self, cutoffs, pruning_size, require_summaries):
-        h = cache.get('analysis.corpus.hierarchy-%s-%s-%s-%s' % (self.id, self.sentence_corpus_id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size))
+    def hierarchy(self, require_summaries=False):
+        h = cache.get(self._hierarchy_cache_key())
         if not h:
-            h = self._compute_hierarchy(cutoffs, pruning_size, require_summaries)
-            cache.set('analysis.corpus.hierarchy-%s-%s-%s-%s' % (self.id, self.sentence_corpus_id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
+            h = self._compute_hierarchy(require_summaries)
+            cache.set(self._hierarchy_cache_key(), h)
             return h
             
         if require_summaries and h[0]['phrases'] == None:
             self._compute_hierarchy_summaries(h)
-            cache.set('analysis.corpus.hierarchy-%s-%s-%s-%s' % (self.id, self.sentence_corpus_id, ",".join([str(cutoff) for cutoff in cutoffs]), pruning_size), h)
+            cache.set(self._hierarchy_cache_key(), h)
             
         return h
+
+
+    def _hierarchy_cache_key(self):
+        return 'analysis.corpus.hierarchy-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in self.hierarchy_cutoffs]))
+
     
     @profile
     def _compute_hierarchy_summaries(self, h):
         for cluster in h:
-            cluster['phrases'] = [text for (id, score, text) in self.representative_phrases_allsql(cluster['members'], 5)]
+            cluster['phrases'] = [text for (id, score, text) in self._representative_phrases(cluster['members'], 5)]
             self._compute_hierarchy_summaries(cluster['children'])
 
     @profile
-    def _compute_hierarchy(self, cutoffs, pruning_size, compute_summaries):
+    def _compute_hierarchy(self, compute_summaries):
         """Return the hierarchy of clusters, in the format d3 expects.
-        
-        Cutoffs must be a descending list of floats.
-        
+                
         See https://github.com/mbostock/d3/wiki/Partition-Layout for result format.
-        
-        The documents in a particular cluster can be found by calling
-        cluster() using the "name" and "cutoff" values from
-        the hierarchy.
+    
+        The functions find_doc_in_hierarchy() and trace_doc_in_hierarchy() can return
+        more information about the output of _compute_hierarchy().
         """
         
-        xs, ys, sims = self._get_similarities()
-        partition = Partition(set(xs + ys))
-        
+        sims = self._get_similarities()
+        all_docs = set()
+        for (x, y, sim) in sims:
+            all_docs.add(x)
+            all_docs.add(y)
+        partition = Partition(all_docs)
+
+        print "Retrieved %s similarities on %s documents." % (len(sims), len(all_docs))
+
+        pruning_size = max(2, len(all_docs) / 100);
         hierarchy = {}
         num_edges = len(sims)
         i = 0
-        for c in cutoffs:
-            while i < num_edges and sims[i] >= c:
-                partition.merge(xs[i], ys[i])
+        for c in self.hierarchy_cutoffs:
+            while i < num_edges and sims[i][2] >= c:
+                partition.merge(sims[i][0], sims[i][1])
                 i += 1
-            
+
             new_hierarchy = [
                 {'name':partition.representative(doc_ids[0]),
                  'size': len(doc_ids),
-                 'members': doc_ids,
+                 'members': _sort_by_centrality(doc_ids, sims),
                  'children': [],
                  'cutoff': c,
-                 'phrases': [text for (id, score, text) in self.representative_phrases_allsql(doc_ids, 5)]
+                 'phrases': [text for (id, score, text) in self._representative_phrases(doc_ids, 5)]
                             if compute_summaries else None
                 }
                 for doc_ids in partition.sets()
@@ -414,44 +333,6 @@ class Corpus(object):
             hierarchy = new_hierarchy
             
         return hierarchy
-
-    @profile
-    def cluster(self, doc_id, cutoff):
-        """Return the set of document IDs in the cluster containing given doc at given cutoff.
-        
-        hierarchy() method should be used first to get the overview of clusters. This
-        method can then be called with a particular doc ID and cutoff from the hierarchy.
-        """
-        
-        xs, ys, sims = self._get_similarities()
-        partition = Partition(set(xs + ys))
-
-        num_edges = len(sims)
-        i = 0
-        while i < num_edges and sims[i] >= cutoff:
-            partition.merge(xs[i], ys[i])
-            i += 1
-            
-        return (partition.representative(doc_id), partition.group(doc_id))
-
-    def clusters_for_doc(self, doc_id):
-        """Return the size of the cluster the given doc is in at different cutoffs."""
-        
-        xs, ys, sims = self._get_similarities()
-        vertices = set(xs + ys)
-        partition = Partition(vertices)
-        
-        result = []
-        num_edges = len(sims)
-        i = 0
-        for c in range(1, 11):
-            cutoff = 1.0 - c * 0.05
-            while i < num_edges and sims[i] >= cutoff:
-                partition.merge(xs[i], ys[i])
-                i += 1
-            result.append((cutoff, partition.representative(doc_id), len(partition.group(doc_id))))
-
-        return result
 
 
     def phrase_overlap(self, target_doc_id, doc_set):
@@ -483,4 +364,45 @@ class Corpus(object):
         """, dict(corpus_id=self.id, target_doc_id=target_doc_id, doc_set=tuple(doc_set)))
         
         return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor.fetchall()])
+
+@profile
+def _sort_by_centrality(doc_ids, sims):
+    sum_accumulator = dict([(id, 0) for id in doc_ids])
+
+    for (x, y, s) in sims:
+        if x in sum_accumulator and y in sum_accumulator:
+            sum_accumulator[x] += s
+            sum_accumulator[y] += s
+    
+    scores = sum_accumulator.items()
+    scores.sort(key=lambda (id, score): score, reverse=True)
+
+    return [id for (id, score) in scores]
+
+
+def find_doc_in_hierarchy(hierarchy, doc_id, cutoff):
+    """ Return the members of the cluster where doc_id is found at given cutoff.
+
+    Returns empty list if doc_id not clustered at given cutoff.
+    """
+
+    for cluster in hierarchy:
+        if doc_id in cluster['members']:
+            if cluster['cutoff'] == cutoff:
+                return cluster
+
+            if cluster['cutoff'] < cutoff:
+                return find_doc_in_hierarchy(cluster['children'], doc_id, cutoff)
+
+    return None
+
+def trace_doc_in_hierarchy(hierarchy, doc_id):
+
+    for cluster in hierarchy:
+        if doc_id in cluster['members']:
+            stats = (cluster['cutoff'], cluster['name'], cluster['size'])
+            return [stats] + trace_doc_in_hierarchy(cluster['children'], doc_id)
+
+    return []
+
 
