@@ -6,6 +6,7 @@ import numpy
 from cStringIO import StringIO
 import zlib
 import struct
+from datetime import datetime
 
 from django.db import connection
 from django.core.cache import cache
@@ -14,6 +15,20 @@ from redis import StrictRedis
 redis = StrictRedis(host='localhost', port=6379, db=0)
 
 from utils import profile
+
+
+def migrate_similarities():
+	cursor = connection.cursor()
+
+	cursor.execute("""
+		select distinct corpus_id
+		from similarities
+	""")
+
+	corpus_ids = list(cursor.fetchall())
+
+	for (corpus_id,) in corpus_ids:
+		serialize_similarities(corpus_id)
 
 
 @profile
@@ -33,7 +48,11 @@ def serialize_similarities(corpus_id):
         order by similarity desc
     """, [corpus_id])
 
-	bytes = numpy_serialize(cursor.fetchall())
+	tuples = cursor.fetchall()
+
+	print "Serializing and uploading %s similarities from corpus %s at %s..." % (len(tuples), corpus_id, datetime.now())
+
+	bytes = compress(numpy_serialize(tuples))
 
 	pg_insert(corpus_id, bytes)
 
