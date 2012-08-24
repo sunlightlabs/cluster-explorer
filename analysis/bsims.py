@@ -8,7 +8,7 @@ import zlib
 import struct
 from datetime import datetime
 
-from django.db import connection
+from django.db import connection, transaction
 from django.core.cache import cache
 
 try:
@@ -26,12 +26,15 @@ def migrate_similarities():
 	cursor.execute("""
 		select distinct corpus_id
 		from similarities
+		where
+			corpus_id not in (select corpus_id from similarities_binary)
 	""")
 
 	corpus_ids = list(cursor.fetchall())
 
 	for (corpus_id,) in corpus_ids:
-		serialize_similarities(corpus_id)
+		with transaction.commit_on_success():
+			serialize_similarities(corpus_id)
 
 
 @profile
