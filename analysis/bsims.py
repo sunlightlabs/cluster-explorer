@@ -132,8 +132,8 @@ def numpy_serialize(entries):
 
 @profile
 def numpy_deserialize(bytes):
-	if len(bytes) % 3 != 0:
-		raise "Decoded string had length %s. Length should be divisible by 3." % len(bytes)
+	if len(bytes) % 12 != 0:
+		raise Exception("Decoded string had length %s. Length should be divisible by 12 (3 4-byte values per entry)." % len(bytes))
 
 	xs = numpy.fromstring(bytes[:len(bytes) / 3], numpy.uint32)
 	ys = numpy.fromstring(bytes[len(bytes) / 3: 2 * len(bytes) / 3], numpy.uint32)
@@ -141,11 +141,12 @@ def numpy_deserialize(bytes):
 	
 	# conversion back to Python ints makes follow up
 	# computations much faster in PyPy
-	xs = [int(x) for x in xs]
-	ys = [int(y) for y in ys]
-	sims = [float(s) for s in sims]
+	result = list()
+	num_entries = len(xs)
+	for i in range(num_entries):
+		result.append((int(xs[i]), int(ys[i]), float(sims[i])))
 
-	return (xs, ys, sims)
+	return result
 
 @profile
 def struct_deserialize(bytes):

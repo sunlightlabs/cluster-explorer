@@ -5,6 +5,7 @@ from django.core.cache import cache
 
 from partition import Partition
 from utils import profile
+import bsims
 
 # Django connection is a wrappers around psycopg2 connection,
 # but that wrapped object isn't initialized till a call is made.
@@ -248,15 +249,7 @@ class Corpus(object):
 
     @profile
     def _get_similarities(self):
-        self.cursor.execute("""
-                select low_document_id, high_document_id, similarity
-                from similarities
-                where
-                    corpus_id = %s
-                order by similarity desc
-        """, [self.id])
-
-        return list(self.cursor.fetchall())
+        return bsims.numpy_deserialize(bsims.decompress(bsims.pg_get(self.id)))
 
 
     @profile
@@ -300,8 +293,6 @@ class Corpus(object):
             all_docs.add(x)
             all_docs.add(y)
         partition = Partition(all_docs)
-
-        print "Retrieved %s similarities on %s documents." % (len(sims), len(all_docs))
 
         pruning_size = max(2, len(all_docs) / 100);
         hierarchy = {}
