@@ -11,8 +11,11 @@ from datetime import datetime
 from django.db import connection
 from django.core.cache import cache
 
-from redis import StrictRedis
-redis = StrictRedis(host='localhost', port=6379, db=0)
+try:
+       from redis import StrictRedis
+       redis = StrictRedis(host='localhost', port=6379, db=0)
+except:
+       pass
 
 from utils import profile
 
