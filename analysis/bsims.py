@@ -7,6 +7,7 @@ from cStringIO import StringIO
 import zlib
 import struct
 from datetime import datetime
+import tempfile
 
 from django.db import connection, transaction
 from django.core.cache import cache
@@ -47,18 +48,41 @@ def serialize_similarities(corpus_id):
 	cursor = connection.cursor()
 
 	cursor.execute("""
-        select low_document_id, high_document_id, similarity
-        from similarities
-        where
-            corpus_id = %s
-        order by similarity desc
-    """, [corpus_id])
+		select count(*)
+		from similarities
+		where
+			corpus_id = %s
+	""", [corpus_id])
 
-	tuples = cursor.fetchall()
+	rows = int(cursor.fetchone()[0])
 
-	print "Serializing and uploading %s similarities from corpus %s at %s..." % (len(tuples), corpus_id, datetime.now())
+	print "Migrating %s similarities from corpus %s at %s..." % (rows, corpus_id, datetime.now())
 
-	bytes = compress(numpy_serialize(tuples))
+	with tempfile.NamedTemporaryFile() as tuple_similarities:
+		cursor.copy_expert("""
+	        COPY (
+		        select low_document_id, high_document_id, similarity
+		        from similarities
+		        where
+		            corpus_id = %s
+		        order by similarity desc
+		    ) to STDOUT
+	    """ % corpus_id, tuple_similarities)
+
+		tuple_similarities.seek(0)
+		xs = numpy.empty(rows, numpy.uint32)
+		ys = numpy.empty(rows, numpy.uint32)
+		sims = numpy.empty(rows, numpy.float32)
+
+		i = 0
+		for line in tuple_similarities:
+			xs[i], ys[i], sims[i] = line.split('\t')
+			i += 1
+
+		if i != rows:
+			raise Exception("Similarities table had %s entries, but we constructed %s." % (rows, i))
+
+	bytes = compress(xs.tostring() + ys.tostring() + sims.tostring())
 
 	pg_insert(corpus_id, bytes)
 
