@@ -13,6 +13,7 @@ import tempfile
 
 from django.db import connection, transaction
 from django.core.cache import cache
+from django.conf import settings
 
 try:
        from redis import StrictRedis
@@ -23,7 +24,7 @@ except:
 from utils import profile
 
 
-DATA_DIR = '.'
+DATA_DIR = getattr(settings, 'SIMS_DATA_DIR', '.')
 
 
 def migrate_similarities():
@@ -46,6 +47,25 @@ def migrate_similarities():
 @profile
 def deserialize_similarities(corpus_id):
 	return numpy_deserialize(pg_get(corpus_id))
+
+
+@profile
+def pg_to_file(corpus_id):
+	file_set(corpus_id, decompress(pg_get(corpus_id)))
+
+@profile
+def migrate_to_files():
+	cursor = connection.cursor()
+
+	cursor.execute("""
+		select distinct corpus_id
+		from similarities_binary
+	""")
+
+	corpus_ids = list(cursor.fetchall())
+
+	for (corpus_id,) in corpus_ids:
+		pg_to_file(corpus_id)
 
 
 @profile
@@ -141,9 +161,11 @@ def file_set(corpus_id, bytes):
 
 @profile
 def file_get(corpus_id):
-	with gzip.open(os.path.join(DATA_DIR, '%s.sim' % corpus_id), 'r') as infile:
-		return infile.read()
-
+	if os.path.exists(os.path.join(DATA_DIR, '%s.sim' % corpus_id)):
+		with gzip.open(os.path.join(DATA_DIR, '%s.sim' % corpus_id), 'r') as infile:
+			return infile.read()
+	else:
+		return ''
 
 @profile
 def cache_upsert(corpus_id, bytes):
