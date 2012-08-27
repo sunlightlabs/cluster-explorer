@@ -255,14 +255,10 @@ class Corpus(object):
 
     @profile
     def add_similarities(self, new_sims):
-        existing_sims = self.corpus.get_similarities()
+        existing_sims = self.get_similarities()
         sims = existing_sims + new_sims
-        sims.sort(key=lambda x, y, s: s, reverse=True)
-        if existing_sims:
-            bsims.pg_update(self.id, sims)
-        else:
-            bsims.pg_insert(self.id, sims)
-
+        sims.sort(key=lambda (x, y, s): s, reverse=True)
+        bsims.file_set(self.id, bsims.numpy_serialize(sims))
 
 
     @profile
