@@ -124,24 +124,20 @@ class DocumentIngester(object):
                     yield (x, y)
 
     def _compute_similarities(self, new_doc_ids, min_similarity=0.5):
-        sim_file = tempfile.TemporaryFile()
-        
         docs = self.corpus.all_docs()
-    
+        new_sims = list()
         i = 0
     
         for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
             similarity = jaccard(docs[x], docs[y])
             if similarity >= min_similarity:
-                sim_file.write("%s,%s,%s,%s\n" % (self.corpus.id, x, y, similarity))
+                new_sims.append((x, y, similarity))
             
             i += 1
             if i % 10000000 == 0:
                 sys.stdout.write('.')
                 sys.stdout.flush()
         
-        sim_file.flush()
-        sim_file.seek(0)
-        self.corpus.upload_csv(sim_file, 'similarities')
-        sim_file.close()
+        if new_sims:
+            self.corpus.add_similarities(new_sims)
 

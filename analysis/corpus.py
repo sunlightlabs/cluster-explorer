@@ -114,6 +114,7 @@ class Corpus(object):
         if not isinstance(doc_ids, tuple):
             doc_ids = tuple(doc_ids)
 
+        # todo: rewrite to delete similarities from byte array
         self.cursor.execute("""
             delete from similarities
             where
@@ -248,8 +249,20 @@ class Corpus(object):
 
 
     @profile
-    def _get_similarities(self):
-        return bsims.numpy_deserialize(bsims.decompress(bsims.pg_get(self.id)))
+    def get_similarities(self):
+        return bsims.numpy_deserialize(bsims.file_get(self.id))
+
+
+    @profile
+    def add_similarities(self, new_sims):
+        existing_sims = self.corpus.get_similarities()
+        sims = existing_sims + new_sims
+        sims.sort(key=lambda x, y, s: s, reverse=True)
+        if existing_sims:
+            bsims.pg_update(self.id, sims)
+        else:
+            bsims.pg_insert(self.id, sims)
+
 
 
     @profile
@@ -287,7 +300,7 @@ class Corpus(object):
         more information about the output of _compute_hierarchy().
         """
         
-        sims = self._get_similarities()
+        sims = self.get_similarities()
         all_docs = set()
         for (x, y, sim) in sims:
             all_docs.add(x)
