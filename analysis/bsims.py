@@ -5,7 +5,9 @@ except:
 import numpy
 from cStringIO import StringIO
 import zlib
+import gzip
 import struct
+import os
 from datetime import datetime
 import tempfile
 
@@ -19,6 +21,9 @@ except:
        pass
 
 from utils import profile
+
+
+DATA_DIR = '.'
 
 
 def migrate_similarities():
@@ -127,6 +132,17 @@ def pg_get(corpus_id):
 	bytes = buffer.getvalue()[2:-1].decode('hex')
 
 	return bytes
+
+
+@profile
+def file_set(corpus_id, bytes):
+	with gzip.open(os.path.join(DATA_DIR, '%s.sim' % corpus_id), 'w') as outfile:
+		outfile.write(bytes)
+
+@profile
+def file_get(corpus_id):
+	with gzip.open(os.path.join(DATA_DIR, '%s.sim' % corpus_id), 'r') as infile:
+		return infile.read()
 
 
 @profile
