@@ -21,12 +21,21 @@ class UnicodeWriter:
         self.stream = f
 
     def writerow(self, row):
-        self.writer.writerow(row)
+        self.writer.writerow([self._encode(s) for s in row])
 
         data = self.queue.getvalue()
         self.queue.truncate(0)
 
         self.stream.write(data.decode("utf-8"))
+
+    @staticmethod
+    def _encode(value):
+        if isinstance(value, str):
+            return value
+        elif isinstance(value, unicode):
+            return value.encode('utf8', 'replace')
+        else:
+            return str(value)
  
 
 def binary_search(a, x, key=None):
