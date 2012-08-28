@@ -5,18 +5,8 @@ import sys
 
 from parser import sentence_parse
 from phrases import PhraseSequencer
-from utils import jaccard
-
-
-
-def _encode(s):
-    if isinstance(s, str):
-        return unicode(s, 'utf8', 'replace').encode('utf8')
-    elif isinstance(s, unicode):
-        return s.encode('utf8')
-    
-    raise Exception("Document text and metadata must be either string or unicode. Got type %s." % type(s))
-    
+from utils import jaccard, UnicodeWriter
+ 
 
 class DocumentIngester(object):
     
@@ -37,7 +27,7 @@ class DocumentIngester(object):
         self.next_id = max_doc_id + 1 if max_doc_id is not None else 0
         
         self.document_file = tempfile.TemporaryFile()
-        self.document_writer = csv.writer(self.document_file)
+        self.document_writer = UnicodeWriter(self.document_file)
 
         self.occurrence_file = tempfile.TemporaryFile()
         
@@ -48,8 +38,8 @@ class DocumentIngester(object):
         doc_id = self.next_id
         self.next_id += 1
         
-        formatted_metadata = ",".join([('"%s"=>"%s"' % (_encode(key), _encode(value).replace('"', '\\"'))) for (key, value) in metadata.items()])
-        self.document_writer.writerow([self.corpus.id, doc_id, _encode(text), formatted_metadata])
+        formatted_metadata = ",".join([('"%s"=>"%s"' % (key, value.replace('"', '\\"'))) for (key, value) in metadata.items()])
+        self.document_writer.writerow([str(self.corpus.id), str(doc_id), text, formatted_metadata])
         
         for (phrase_id, indexes) in phrases:
             formatted_indexes = '"{%s}"' % ", ".join(['""(%s, %s)""' % (start, end) for (start, end) in indexes])
