@@ -1,6 +1,5 @@
 from datetime import datetime
 import cStringIO
-import codecs
 import csv
 
 from django.conf import settings
@@ -13,26 +12,21 @@ def execute_file(cursor, filename):
         cursor.execute(statement)
 
 class UnicodeWriter:
-    """Copied from http://docs.python.org/library/csv.html"""
+    """Adapted from http://docs.python.org/library/csv.html"""
 
-    def __init__(self, f, encoding="utf-8", **kwds):
+    def __init__(self, f):
         # Redirect output to a queue
         self.queue = cStringIO.StringIO()
-        self.writer = csv.writer(self.queue, **kwds)
+        self.writer = csv.writer(self.queue)
         self.stream = f
-        self.encoder = codecs.getincrementalencoder(encoding)()
 
     def writerow(self, row):
-        self.writer.writerow([s.encode("utf-8") for s in row])
-        # Fetch UTF-8 output from the queue ...
+        self.writer.writerow(row)
+
         data = self.queue.getvalue()
-        data = data.decode("utf-8")
-        # ... and reencode it into the target encoding
-        data = self.encoder.encode(data)
-        # write to the target stream
-        self.stream.write(data)
-        # empty queue
         self.queue.truncate(0)
+
+        self.stream.write(data.decode("utf-8"))
  
 
 def binary_search(a, x, key=None):
