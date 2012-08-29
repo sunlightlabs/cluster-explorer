@@ -1,6 +1,6 @@
 from datetime import datetime
-import cStringIO
 import csv
+import re
 
 from django.conf import settings
 
@@ -12,31 +12,34 @@ def execute_file(cursor, filename):
         cursor.execute(statement)
 
 class UnicodeWriter:
-    """Adapted from http://docs.python.org/library/csv.html"""
+    """A wrapper around csv.writer that properly handles unicode.
+
+    string inputs are assumed to be utf8 encoded. Output is utf8.
+    Python 2.x allows surrogate code points, which are not legal unicode
+    and will be rejected by postgres. See:
+    http://en.wikipedia.org/wiki/UTF-8#Invalid_code_points
+    http://bugs.python.org/issue8271#msg102209
+    Surrogates are replaced with the unicode replacement 
+    character.
+    """
 
     def __init__(self, f):
-        # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
-        self.writer = csv.writer(self.queue)
-        self.stream = f
+        self.writer = csv.writer(f)
 
     def writerow(self, row):
         self.writer.writerow([self._encode(s) for s in row])
 
-        data = self.queue.getvalue()
-        self.queue.truncate(0)
-
-        self.stream.write(data.decode("utf-8"))
-
     @staticmethod
     def _encode(value):
-        if isinstance(value, str):
-            return value
-        elif isinstance(value, unicode):
-            return value.encode('utf8', 'replace')
+        if isinstance(value, unicode):
+            u = value
+        elif isinstance(value, str):
+            u = unicode(value, 'utf8', 'replace')
         else:
-            return str(value)
- 
+            u = unicode(value)
+        surrogates_removed = re.sub(ur'[\ud800-\udfff]', u'\uFFFD', u)
+        return surrogates_removed.encode('utf8', 'replace')
+
 
 def binary_search(a, x, key=None):
     """Given a sorted (decreasing) list, return the first element that is less than the target value."""
