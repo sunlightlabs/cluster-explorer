@@ -1,7 +1,7 @@
 import os
 
 from django.test import TestCase
-from django.db import connection, transaction
+from django.db import connection
 
 from ingestion import *
 from phrases import PhraseSequencer
@@ -9,6 +9,7 @@ from parser import _sentence_boundaries, _ngram_boundaries, sentence_parse
 from utils import execute_file, binary_search
 from corpus import Corpus
 from partition import Partition
+from utils import BufferedCompressedWriter, BufferedCompressedReader
 
 
 class DBTestCase(TestCase):
@@ -103,9 +104,7 @@ class TestParser(DBTestCase):
         c.execute('select count(*) from phrases')
         self.assertEqual(0, c.fetchone()[0])
         
-    def test_ngrams(self):
-        s = PhraseSequencer(self.corpus)
-        
+    def test_ngrams(self):        
         self.assertEqual([], _ngram_boundaries('', 3))
         self.assertEqual([], _ngram_boundaries('foobar', 3))
         self.assertEqual([(0,6)], _ngram_boundaries('foobar', 1))
@@ -198,7 +197,6 @@ class TestDocumentIngester(DBTestCase):
         
     def test_all_docs(self):
         i = DocumentIngester(self.corpus)
-        s = PhraseSequencer(self.corpus)
 
         i.ingest([
             'This document has three sentences. One of which matches. Two of which do not.',
@@ -407,6 +405,57 @@ class TestBinarySearch(TestCase):
         self.assertEqual(5, binary_search([2, 2, 2, 2, 1], 1))
         
 
+class TestBufferedCompressedIO(TestCase):
+
+    def assertReadWriterConsistent(self, value, buffer_size=1000000):
+        with BufferedCompressedWriter(open('test.out', 'w'), buffer_size) as w:
+            w.write(value)
+
+        with BufferedCompressedReader(open('test.out', 'r'), buffer_size) as r:
+            self.assertEqual(value, r.read(len(value)))
+
+    def test(self):
+        testfile = 'test.out'
+        try:
+            self.assertReadWriterConsistent('')
+            self.assertReadWriterConsistent('a')
+            self.assertReadWriterConsistent('apples')
+            self.assertReadWriterConsistent("".join([chr(i) for i in range(256)]))
+
+            self.assertReadWriterConsistent('', 1)
+            self.assertReadWriterConsistent('a', 1)
+            self.assertReadWriterConsistent('apples', 1)
+            self.assertReadWriterConsistent("".join([chr(i) for i in range(256)]), 1)
+
+            self.assertReadWriterConsistent('', 1)
+            self.assertReadWriterConsistent('a', 1)
+            self.assertReadWriterConsistent('apples', 5)
+            self.assertReadWriterConsistent('apples', 6)
+            self.assertReadWriterConsistent('apples', 7)
+        finally:
+            os.remove(testfile)
+
+    def test_append(self):
+        testfile = 'test.out'
+        try:
+            with BufferedCompressedWriter(open(testfile, 'w')) as w:
+                w.write('three ')
+            with BufferedCompressedWriter(open(testfile, 'a')) as w:
+                w.write('separate ')
+            with BufferedCompressedWriter(open(testfile, 'a')) as w:
+                w.write('writes')
+
+            with BufferedCompressedReader(open('test.out', 'r')) as r:
+                self.assertEqual('three separate writes', r.read(len('three separate writes')))
+
+            with BufferedCompressedReader(open('test.out', 'r'), 2) as r:
+                self.assertEqual('three separate writes', r.read(len('three separate writes')))
+
+            with BufferedCompressedReader(open('test.out', 'r')) as r:
+                self.assertEqual('three separate writes', r.read(len('three ')) + r.read(len('sepa')) + r.read(len('rate writes')))
+
+        finally:
+            os.remove(testfile)
 
 if __name__ == '__main__':
     unittest.main()

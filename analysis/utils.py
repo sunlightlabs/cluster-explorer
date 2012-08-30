@@ -1,6 +1,8 @@
 from datetime import datetime
 import csv
 import re
+from cStringIO import StringIO
+import zlib
 
 from django.conf import settings
 
@@ -39,6 +41,97 @@ class UnicodeWriter:
             u = unicode(value)
         surrogates_removed = re.sub(ur'[\ud800-\udfff]', u'\uFFFD', u)
         return surrogates_removed.encode('utf8', 'replace')
+
+
+_DEFAULT_BUFFER_SIZE = 100 * 1024 * 1024 # = 100MB
+
+class BufferedCompressedWriter(object):
+
+    def __init__(self, outstream, buffer_size=_DEFAULT_BUFFER_SIZE):
+        self.outputstream = outstream
+        self.compressor = zlib.compressobj()
+        self.buffer_size = buffer_size
+        self.buffer = StringIO()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def write(self, bytes):
+        self.buffer.write(bytes)
+
+        if self.buffer.tell() >= self.buffer_size:
+            self.flush()
+
+    def flush(self):
+        buffered_bytes = self.buffer.getvalue()
+        self.buffer.truncate(0)
+
+        compressed_bytes = self.compressor.compress(buffered_bytes)
+
+        self.outputstream.write(compressed_bytes)
+
+
+    def close(self):
+        self.flush()
+        remaining_compressed_bytes = self.compressor.flush()
+        self.outputstream.write(remaining_compressed_bytes)
+        self.outputstream.flush()
+        self.compressor = None
+
+
+class BufferedCompressedReader(object):
+
+    def __init__(self, inputstream, buffer_size=_DEFAULT_BUFFER_SIZE):
+        self.inputstream = inputstream
+        self.decompressor = zlib.decompressobj()
+        self.compressed_buffer = StringIO()
+        self.decompressed_buffer = StringIO()
+        self.buffer_size = buffer_size
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def close(self):
+        self.decompressor = None
+        self.compressed_buffer = None
+        self.decompressed_buffer = None
+
+    def read(self, byte_count=None):
+        eof = False
+        while not eof and self.decompressed_buffer.tell() < byte_count:
+            # make sure the number of compressed bytes is at least as large as then number of decompressed bytes we still need
+            while not eof and self.compressed_buffer.tell() < byte_count - self.decompressed_buffer.tell():
+                new_compressed_bytes = self.inputstream.read(self.buffer_size)
+                if not new_compressed_bytes:
+                    eof = True
+                else:
+                    self.compressed_buffer.write(new_compressed_bytes)
+
+            compressed_bytes = self.compressed_buffer.getvalue()
+            self.compressed_buffer.truncate(0)
+            new_uncompressed_bytes = self.decompressor.decompress(compressed_bytes, byte_count - self.decompressed_buffer.tell())
+            self.decompressed_buffer.write(new_uncompressed_bytes)
+
+            if self.decompressor.unconsumed_tail:
+                self.compressed_buffer.write(self.decompressor.unconsumed_tail)
+            elif self.decompressor.unused_data:
+                self.compressed_buffer.write(self.decompressor.unused_data)
+                # file may be a sequence of separate compression streams.
+                # if we hit unused_data then we're at a new stream and
+                # need to reset the decompressor.
+                self.decompressor = zlib.decompressobj()
+
+        decompressed = self.decompressed_buffer.getvalue()
+        self.decompressed_buffer.close()
+        self.decompressed_buffer = StringIO()
+        self.decompressed_buffer.write(decompressed[byte_count:])
+        return decompressed[:byte_count]
 
 
 def binary_search(a, x, key=None):
