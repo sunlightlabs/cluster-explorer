@@ -10,10 +10,13 @@ import struct
 import os
 from datetime import datetime
 import tempfile
+from itertools import chain
 
 from django.db import connection, transaction
 from django.core.cache import cache
 from django.conf import settings
+
+from utils import BufferedCompressedWriter, BufferedCompressedReader
 
 try:
        from redis import StrictRedis
@@ -26,51 +29,68 @@ from utils import profile
 
 DATA_DIR = getattr(settings, 'SIMS_DATA_DIR', '.')
 
-
-
 STORED_SIMILARITY_CUTOFFS = [0.9, 0.8, 0.7, 0.6, 0.5]
 SIMILARITY_IO_BUFFER_SIZE = 100 * 1024 * 1024 # 100MB, enough so vast majority of corpora fit in single buffer
 
 class SimilarityWriter(object):
 
-	def __init__(self, corpus_id):
-		pass
+	def __init__(self, corpus_id, root=DATA_DIR):
+		dir = os.path.join(root, str(corpus_id))
+		if not os.path.isdir(dir):
+			os.mkdir(dir)
+		self.buffers = [list() for _ in range(len(STORED_SIMILARITY_CUTOFFS))]
+
+		self.writers = [BufferedCompressedWriter(open(os.path.join(dir, "%s.sims" % str(9-i)), 'a')) 
+						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
 
 	def __enter__(self):
 		return self
 
-	def __exit__(self):
+	def __exit__(self, exc_type, exc_value, traceback):
 		self.close()
 
-	def write(x, y, s):
-		pass
-		# split on similarity
-		# write to in-meory buffer
-		# when buffer is full, push to compressed temp file
+	def write(self, x, y, s):
+		i = 0
+		while STORED_SIMILARITY_CUTOFFS[i] > s:
+			i += 1
+			if i == len(STORED_SIMILARITY_CUTOFFS):
+				return
 
-	def close():
-		pass
-		# flush last buffer
-		# move old file to backup, rename temp file, delete backup
+		self.buffers[i] += (x, y)
+
+	def flush(self):
+		for i in range(len(STORED_SIMILARITY_CUTOFFS)):
+			serialization = numpy.array(self.buffers[i], numpy.uint32).tostring()
+			self.buffers[i] = []
+			self.writers[i].write(serialization)
+			self.writers[i].flush()
+
+	def close(self):
+		self.flush()
+		for w in self.writers:
+			w.close()
 
 
 class SimilarityReader(object):
-	
 
-	def __init__(self):
-		pass
+	def __init__(self, corpus_id, root=DATA_DIR):
+		self.dir = os.path.join(root, str(corpus_id))
 
 	def __iter__(self):
-		pass
-		# chain iterators on each bucket
+		return chain.from_iterable(
+			(self._file_iter(os.path.join(self.dir, "%s.sims" % str(9-i)), STORED_SIMILARITY_CUTOFFS[i] + 0.05) 
+			for i in range(len(STORED_SIMILARITY_CUTOFFS))))
 
-	def bucket(cutoff):
-		pass
-		# open compressed file
+	def _file_iter(self, filename, similarity):
+		with BufferedCompressedReader(open(filename, 'r')) as reader:
 
-		# feed in chunks of compressed file to decompressor
+			serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
+			while serialized_bytes:
+				pairs = numpy.fromstring(serialized_bytes, numpy.uint32)
+				for i in range(0, len(pairs), 2):
+					yield (int(pairs[i]), int(pairs[i+1]), similarity)
 
-		# yield one at a time
+				serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 
 
 

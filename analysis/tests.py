@@ -1,3 +1,4 @@
+import shutil
 import os
 
 from django.test import TestCase
@@ -10,6 +11,7 @@ from utils import execute_file, binary_search
 from corpus import Corpus
 from partition import Partition
 from utils import BufferedCompressedWriter, BufferedCompressedReader
+from bsims import SimilarityWriter, SimilarityReader
 
 
 class DBTestCase(TestCase):
@@ -456,6 +458,31 @@ class TestBufferedCompressedIO(TestCase):
 
         finally:
             os.remove(testfile)
+
+    def test_sim_io(self):
+        shutil.rmtree(os.path.join('.', '0'))
+
+        with SimilarityWriter(0, root='.') as w:
+            w.write(1,2,1.0)
+            w.write(1,3,0.95)
+            w.write(1,4,0.9)
+            w.write(2,5,0.8)
+            w.write(2,6,0.72)
+            w.write(2,7,0.7)
+            w.write(3,8,0.5)
+            w.write(3,9,0.4)
+
+        r = SimilarityReader(0, root='.')
+        values = list(r)
+        self.assertEqual([(1,2,.9 + .05),
+                          (1,3,.9 + .05),
+                          (1,4,.9 + .05),
+                          (2,5,.8 + .05),
+                          (2,6,.7 + .05),
+                          (2,7,.7 + .05),
+                          (3,8,.5 + .05)],
+                        values)
+
 
 if __name__ == '__main__':
     unittest.main()
