@@ -135,6 +135,17 @@ def migrate_to_files():
 		pg_to_file(corpus_id)
 
 
+def migrate_single_file_to_bucketed(data_root):
+	single_files = [int(filename.split('.')[0]) for filename in os.listdir(data_root) if filename.endswith('.sim')]
+	for corpus_id in single_files:
+		print "Migrating corpus %s at %s..." % (corpus_id, datetime.now())
+		sims = numpy_deserialize(file_get(corpus_id))
+		with SimilarityWriter(corpus_id) as w:
+			for (x, y, s) in sims:
+				w.write(x, y, s)
+
+
+
 @profile
 def serialize_similarities(corpus_id):
 	cursor = connection.cursor()
