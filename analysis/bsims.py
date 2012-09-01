@@ -305,4 +305,17 @@ def compress(bytes):
 def decompress(bytes):
 	return zlib.decompress(bytes)
 
+def recompute_sims(corpus_id):
+	from analysis.corpus import Corpus
+	from analysis.ingestion import DocumentIngester
+
+	print "Staring corpus %s at %s..." % (corpus_id, datetime.now())
+	
+	cursor = connection.cursor()
+	cursor.execute('select document_id from documents where corpus_id = %s', [corpus_id])
+	doc_ids = [d for (d,) in cursor.fetchall()]
+
+	c = Corpus(corpus_id)
+	i = DocumentIngester(c)
+	i._compute_similarities(doc_ids)
 
