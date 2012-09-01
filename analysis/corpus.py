@@ -1,3 +1,4 @@
+import itertools
 
 import psycopg2.extras
 from django.db import connection
@@ -66,7 +67,7 @@ class Corpus(object):
         self.sentence_corpus_id = sentence_corpus_id if sentence_corpus_id else corpus_id
 
         # hierarchy settings are fixed here, but client could in theory change them if desred
-        self.hierarchy_cutoffs = [0.9, 0.8, 0.7, 0.6, 0.5]
+        self.hierarchy_cutoffs = bsims.STORED_SIMILARITY_CUTOFFS
 
 
     def num_docs(self):
@@ -296,42 +297,47 @@ class Corpus(object):
         more information about the output of _compute_hierarchy().
         """
         
-        sims = self.get_similarities()
-        all_docs = set()
-        for (x, y, sim) in sims:
-            all_docs.add(x)
-            all_docs.add(y)
+        self.cursor.execute("select document_id from documents where corpus_id = %s", [self.id])
+        all_docs = set([d for (d,) in self.cursor.fetchall()])
         partition = Partition(all_docs)
 
         pruning_size = max(2, len(all_docs) / 100);
         hierarchy = {}
-        num_edges = len(sims)
-        i = 0
-        for c in self.hierarchy_cutoffs:
-            while i < num_edges and sims[i][2] >= c:
-                partition.merge(sims[i][0], sims[i][1])
-                i += 1
 
-            new_hierarchy = [
-                {'name':partition.representative(doc_ids[0]),
-                 'size': len(doc_ids),
-                 'members': _sort_by_centrality(doc_ids, sims),
-                 'children': [],
-                 'cutoff': c,
-                 'phrases': [text for (id, score, text) in self._representative_phrases(doc_ids, 5)]
-                            if compute_summaries else None
-                }
-                for doc_ids in partition.sets()
-                if len(doc_ids) > pruning_size
-            ]
-            
-            for prev_cluster in hierarchy:
+        cutoffs_remaining = list(self.hierarchy_cutoffs)
+        # note: (-1,-1,0) terminator is necessary so that hierarchy building
+        # code has a chance to run one more time after last sim is read.
+        for (x, y, sim) in itertools.chain(bsims.SimilarityReader(self.id), [(-1,-1,0)]):
+            while cutoffs_remaining and sim < cutoffs_remaining[0]:
+                new_hierarchy = [
+                    {'name':partition.representative(doc_ids[0]),
+                     'size': len(doc_ids),
+                     'members': doc_ids,
+                     'children': [],
+                     'cutoff': cutoffs_remaining[0],
+                     'phrases': [text for (id, score, text) in self._representative_phrases(doc_ids, 5)]
+                                if compute_summaries else None
+                    }
+                    for doc_ids in partition.sets()
+                    if len(doc_ids) > pruning_size
+                ]
+                
+                for prev_cluster in hierarchy:
+                    for cluster in new_hierarchy:
+                        if partition.representative(prev_cluster['name']) == cluster['name']:
+                            cluster['children'].append(prev_cluster)
+                
                 for cluster in new_hierarchy:
-                    if partition.representative(prev_cluster['name']) == cluster['name']:
-                        cluster['children'].append(prev_cluster)
-                        
-            hierarchy = new_hierarchy
+                    _order_members(cluster)
+
+                hierarchy = new_hierarchy
+                cutoffs_remaining.pop(0)
             
+            if not cutoffs_remaining:
+                break
+
+            partition.merge(x, y)
+
         return hierarchy
 
 
@@ -365,19 +371,18 @@ class Corpus(object):
         
         return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor.fetchall()])
 
-@profile
-def _sort_by_centrality(doc_ids, sims):
-    sum_accumulator = dict([(id, 0) for id in doc_ids])
 
-    for (x, y, s) in sims:
-        if x in sum_accumulator and y in sum_accumulator:
-            sum_accumulator[x] += s
-            sum_accumulator[y] += s
-    
-    scores = sum_accumulator.items()
-    scores.sort(key=lambda (id, score): score, reverse=True)
+def _order_members(cluster):
 
-    return [id for (id, score) in scores]
+    child_lists = [child['members'] for child in cluster['children']]
+    child_lists.sort(key=lambda l: len(l), reverse=True)
+    ordered_children = reduce(lambda x, y: x + y, child_lists, [])
+
+    all_members = set(cluster['members'])
+    child_set = set(ordered_children)
+    new_members = [m for m in all_members if m not in child_set]
+
+    cluster['members'] = ordered_children + new_members
 
 
 def find_doc_in_hierarchy(hierarchy, doc_id, cutoff):

@@ -6,7 +6,7 @@ import sys
 from parser import sentence_parse
 from phrases import PhraseSequencer
 from utils import jaccard, UnicodeWriter
- 
+from bsims import SimilarityWriter
 
 class DocumentIngester(object):
     
@@ -115,19 +115,17 @@ class DocumentIngester(object):
 
     def _compute_similarities(self, new_doc_ids, min_similarity=0.5):
         docs = self.corpus.all_docs()
-        new_sims = list()
-        i = 0
     
-        for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
-            similarity = jaccard(docs[x], docs[y])
-            if similarity >= min_similarity:
-                new_sims.append((x, y, similarity))
-            
-            i += 1
-            if i % 10000000 == 0:
-                sys.stdout.write('.')
-                sys.stdout.flush()
-        
-        if new_sims:
-            self.corpus.add_similarities(new_sims)
+        with SimilarityWriter(self.corpus.id) as writer:
+            i = 0
+            for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
+                similarity = jaccard(docs[x], docs[y])
+                if similarity >= min_similarity:
+                    writer.write(x, y, similarity)
+                
+                i += 1
+                if i % 10000000 == 0:
+                    writer.flush()
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
 
