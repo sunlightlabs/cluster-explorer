@@ -148,7 +148,7 @@ class Command(BaseCommand):
 
         print "Beginning loading %s dockets at %s..." % (len(dockets), datetime.now())
 
-        for docket in dockets:
+        for docket in list(dockets):
             if options.get('repair'):
                 repair_missing_docket(docket)
             else:
