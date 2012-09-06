@@ -10,3 +10,4 @@ watcher.rb
 local_settings.py
 data
 data/*
+sim_data/
