@@ -115,15 +115,6 @@ class Corpus(object):
         if not isinstance(doc_ids, tuple):
             doc_ids = tuple(doc_ids)
 
-        # todo: rewrite to delete similarities from byte array
-        self.cursor.execute("""
-            delete from similarities
-            where
-                corpus_id = %(corpus_id)s
-                and (low_document_id in %(doc_ids)s
-                    or high_document_id in %(doc_ids)s)
-        """, dict(corpus_id=self.id, doc_ids=doc_ids))
-
         self.cursor.execute("""
             delete from phrase_occurrences
             where
@@ -150,6 +141,10 @@ class Corpus(object):
                 and document_id in %(doc_ids)s
         """, dict(corpus_id=self.id, doc_ids=doc_ids))
 
+        # remove from the similarities file store
+        bsims.remove_documents(self.id, doc_ids)
+
+
     def delete_by_metadata(self, key, values):
         """Remove all documents where a given key is in the given values."""
 
@@ -161,7 +156,7 @@ class Corpus(object):
                 and metadata -> %(key)s in %(values)s
         """, dict(corpus_id=self.id, key=key, values=tuple(values)))
 
-        doc_ids = self.cursor.fetchall()
+        doc_ids = [id for (id,) in self.cursor.fetchall()]
 
         if len(doc_ids) > 0:
             self.delete(doc_ids)

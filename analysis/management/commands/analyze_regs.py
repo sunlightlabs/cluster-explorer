@@ -31,11 +31,11 @@ def doc_metadata(doc):
 # can be run from shell before or after ingestion to test integrity
 def print_stats(docket_id):
     print "MongoDB has\t%s in_cluster_db=True, deleted=False;\t%s in_cluster_db=False,deleted=False" % \
-        (Doc.objects(docket_id=docket_id,in_cluster_db=True,deleted=False).count(),
-        Doc.objects(docket_id=docket_id,in_cluster_db=False,deleted=False).count())
+        (Doc.objects(docket_id=docket_id,in_cluster_db=True,deleted=False, type='public_submission').count(),
+        Doc.objects(docket_id=docket_id,in_cluster_db=False,deleted=False, type='public_submission').count())
     print "\t\t%s in_cluster_db=True, deleted=True;\t%s in_cluster_db=False,deleted=True" % \
-        (Doc.objects(docket_id=docket_id,in_cluster_db=True,deleted=True).count(),
-        Doc.objects(docket_id=docket_id,in_cluster_db=False,deleted=True).count())
+        (Doc.objects(docket_id=docket_id,in_cluster_db=True,deleted=True, type='public_submission').count(),
+        Doc.objects(docket_id=docket_id,in_cluster_db=False,deleted=True, type='public_submission').count())
 
 
     for corpus in get_corpora_by_metadata('docket_id', docket_id):

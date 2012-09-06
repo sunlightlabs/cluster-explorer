@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 import tempfile
 from itertools import chain
+import shutil
 
 from django.db import connection, transaction
 from django.core.cache import cache
@@ -92,6 +93,24 @@ class SimilarityReader(object):
 
 				serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 
+def remove_documents(corpus_id, doc_ids):
+	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
+	if not os.path.isdir(existing_dir):
+		# only n-gram parsed corpora have similarity data. If no directory, then skip.
+		print "skipping, couldn't find %s" % existing_dir
+		return
+
+	temp_dir = tempfile.mkdtemp()
+
+	deletion_set = set(doc_ids) # set could be faster than large list
+	with SimilarityWriter(corpus_id, temp_dir) as w:
+		for (x, y, s) in SimilarityReader(corpus_id):
+			if x not in deletion_set and y not in deletion_set:
+				w.write(x, y, s)
+
+	shutil.rmtree(existing_dir)
+	shutil.move(os.path.join(temp_dir, str(corpus_id)), existing_dir)
+	shutil.rmtree(temp_dir)
 
 
 def migrate_similarities():
