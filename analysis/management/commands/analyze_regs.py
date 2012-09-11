@@ -135,7 +135,7 @@ def delete_analysis(docket):
         c = get_dual_corpora_by_metadata('docket_id', docket.id)
         if c:
             c.delete_corpus()
-            print "Deleted docket %s." % docket.id
+            print "Deleted docket %s (id=%s)." % (docket.id, c.id)
         else:
             print "Attempted deletion of %s. Docket not found." % docket.id
         Doc.objects(docket_id=docket.id).update(set__in_cluster_db=False)

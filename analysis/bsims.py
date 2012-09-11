@@ -115,7 +115,9 @@ def remove_documents(corpus_id, doc_ids):
 
 def remove_all(corpus_id):
 	"""Completely remove similarity directory for corpus."""
-	shutil.rmtree(os.path.join(DATA_DIR, str(corpus_id)))
+	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
+	if os.path.isdir(existing_dir):
+		shutil.rmtree(existing_dir)
 
 
 def migrate_similarities():
