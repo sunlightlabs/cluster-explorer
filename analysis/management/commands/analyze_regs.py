@@ -136,10 +136,8 @@ def repair_missing_sims(docket):
 
     with transaction.commit_on_success():
         c = get_dual_corpora_by_metadata('docket_id', docket.id)
-        if c:
-            doc_count = c.num_docs()
-            if doc_count > 0 and not bsims.exists(c.id):
-                print "Docket %s (id=%s) missing similarities. Computing for %s documents at %s..." % (docket.id, c.id, doc_count, datetime.now())
+        if c and not bsims.exists(c.id):
+                print "Docket %s (id=%s) missing similarities. Starting recomputation at %s..." % (docket.id, c.id, datetime.now())
                 i = DocumentIngester(c)
                 i.compute_similarities()
 
