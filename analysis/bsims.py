@@ -94,6 +94,7 @@ class SimilarityReader(object):
 				serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 
 def remove_documents(corpus_id, doc_ids):
+	"""Remove any similarity containing the given doc_ids."""
 	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
 	if not os.path.isdir(existing_dir):
 		# only n-gram parsed corpora have similarity data. If no directory, then skip.
@@ -111,6 +112,10 @@ def remove_documents(corpus_id, doc_ids):
 	shutil.rmtree(existing_dir)
 	shutil.move(os.path.join(temp_dir, str(corpus_id)), existing_dir)
 	shutil.rmtree(temp_dir)
+
+def remove_all(corpus_id):
+	"""Completely remove similarity directory for corpus."""
+	shutil.rmtree(os.path.join(DATA_DIR, str(corpus_id)))
 
 
 def migrate_similarities():

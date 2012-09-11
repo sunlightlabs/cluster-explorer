@@ -144,6 +144,38 @@ class Corpus(object):
         # remove from the similarities file store
         bsims.remove_documents(self.id, doc_ids)
 
+    def delete_corpus(self):
+        """Remove all data associated with given doc IDs."""
+
+        # psycopg2 requires a tuple
+        ids = tuple(set([self.id, self.sentence_corpus_id]))
+
+        self.cursor.execute("""
+            delete from phrase_occurrences
+            where
+                corpus_id in %(corpus_id)s
+        """, dict(corpus_id=ids))
+
+        self.cursor.execute("""
+            delete from phrases
+            where
+                corpus_id in %(corpus_id)s
+        """, dict(corpus_id=ids))
+
+        self.cursor.execute("""
+            delete from documents
+            where
+                corpus_id in %(corpus_id)s
+        """, dict(corpus_id=ids))
+
+        self.cursor.execute("""
+            delete from corpora
+            where
+                corpus_id in %(corpus_id)s
+        """, dict(corpus_id=ids))
+
+        # remove from the similarities file store
+        bsims.remove_all(self.id)
 
     def delete_by_metadata(self, key, values):
         """Remove all documents where a given key is in the given values."""

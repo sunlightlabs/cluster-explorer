@@ -4,7 +4,7 @@ from optparse import make_option
 from django.db import transaction
 from django.core.management.base import BaseCommand
 
-from analysis.corpus import Corpus, get_corpora_by_metadata
+from analysis.corpus import Corpus, get_corpora_by_metadata, get_dual_corpora_by_metadata
 from analysis.ingestion import DocumentIngester
 from analysis.parser import ngram_parser, sentence_parse
 
@@ -130,11 +130,23 @@ def repair_missing_docket(docket):
     # both parses exist, everything's fine
 
 
+def delete_analysis(docket):
+    with transaction.commit_on_success():
+        c = get_dual_corpora_by_metadata('docket_id', docket.id)
+        if c:
+            c.delete_corpus()
+            print "Deleted docket %s." % docket.id
+        else:
+            print "Attempted deletion of %s. Docket not found." % docket.id
+        Doc.objects(docket_id=docket.id).update(set__in_cluster_db=False)
+
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('-a', "--agency", dest="agency"),
         make_option('-d', "--docket", dest="docket"),
         make_option('-r', "--repair", dest='repair', action="store_true"),
+        make_option("--delete", dest='delete', action='store_true'),
     )
 
     @transaction.commit_manually
@@ -151,6 +163,8 @@ class Command(BaseCommand):
         for docket in list(dockets):
             if options.get('repair'):
                 repair_missing_docket(docket)
+            elif options.get('delete'):
+                delete_analysis(docket)
             else:
                 ingest_docket(docket)
 
