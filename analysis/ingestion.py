@@ -21,7 +21,7 @@ class DocumentIngester(object):
         
         self.corpus = corpus
         self.parser = parser
-        self.compute_similarities = compute_similarities
+        self.should_compute_similarities = compute_similarities
         
         max_doc_id = corpus.max_doc_id()
         self.next_id = max_doc_id + 1 if max_doc_id is not None else 0
@@ -93,9 +93,9 @@ class DocumentIngester(object):
         self.sequencer.upload_new_phrases()
         self._upload_new_documents()
         
-        if self.compute_similarities:
+        if self.should_compute_similarities:
             print "computing similarities..."
-            self._compute_similarities(new_doc_ids)
+            self.compute_similarities(new_doc_ids)
 
     @staticmethod
     def _pairs_for_comparison(all_ids, new_ids):
@@ -113,8 +113,13 @@ class DocumentIngester(object):
                 if y in allowed_ids:
                     yield (x, y)
 
-    def _compute_similarities(self, new_doc_ids, min_similarity=0.5):
+    def compute_similarities(self, new_doc_ids=None, min_similarity=0.5):
         docs = self.corpus.all_docs()
+
+        # new_doc_ids is used to keep from recomputing already known similarities.
+        # None is special signal to compute on all doc pairs.
+        if new_doc_ids is None:
+            new_doc_ids = docs.keys()
     
         with SimilarityWriter(self.corpus.id) as writer:
             i = 0

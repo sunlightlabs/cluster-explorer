@@ -218,7 +218,7 @@ class TestDocumentIngester(DBTestCase):
         self.test_ingester()
         
         i = DocumentIngester(self.corpus)
-        i._compute_similarities([0, 1, 2])
+        i.compute_similarities([0, 1, 2])
         
         c = connection.cursor()
         
@@ -233,7 +233,7 @@ class TestDocumentIngester(DBTestCase):
         self.test_ingester()
 
         i = DocumentIngester(self.corpus)
-        i._compute_similarities([0, 1, 2], min_similarity=0.0)
+        i.compute_similarities([0, 1, 2], min_similarity=0.0)
 
         c = connection.cursor()
 

@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 from analysis.corpus import Corpus, get_corpora_by_metadata, get_dual_corpora_by_metadata
 from analysis.ingestion import DocumentIngester
 from analysis.parser import ngram_parser, sentence_parse
+from analysis import bsims
 
 from regs_models import Docket, Doc
 
@@ -129,6 +130,19 @@ def repair_missing_docket(docket):
 
     # both parses exist, everything's fine
 
+def repair_missing_sims(docket):
+    """Repair the situation where a docket is correct in Mongo and Postgres,
+    but the similarity directory is missing."""
+
+    with transaction.commit_on_success():
+        c = get_dual_corpora_by_metadata('docket_id', docket.id)
+        if c:
+            doc_count = c.num_docs()
+            if doc_count > 0 and not bsims.exists(c.id):
+                print "Docket %s (id=%s) missing similarities. Computing for %s documents at %s..." % (docket.id, c.id, doc_count, datetime.now())
+                i = DocumentIngester(c)
+                i.compute_similarities()
+
 
 def delete_analysis(docket):
     with transaction.commit_on_success():
@@ -147,6 +161,7 @@ class Command(BaseCommand):
         make_option('-d', "--docket", dest="docket"),
         make_option('-r', "--repair", dest='repair', action="store_true"),
         make_option("--delete", dest='delete', action='store_true'),
+        make_option("--repair_sims", dest='repair_sims', action='store_true'),
     )
 
     @transaction.commit_manually
@@ -165,8 +180,11 @@ class Command(BaseCommand):
                 repair_missing_docket(docket)
             elif options.get('delete'):
                 delete_analysis(docket)
+            elif options.get('repair_sims'):
+                repair_missing_sims(docket)
             else:
                 ingest_docket(docket)
 
         print "Done."
+
 

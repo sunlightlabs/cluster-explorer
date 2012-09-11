@@ -119,6 +119,9 @@ def remove_all(corpus_id):
 	if os.path.isdir(existing_dir):
 		shutil.rmtree(existing_dir)
 
+def exists(corpus_id):
+	return os.path.isdir(os.path.join(DATA_DIR, str(corpus_id)))
+
 
 def migrate_similarities():
 	cursor = connection.cursor()
@@ -354,5 +357,5 @@ def recompute_sims(corpus_id):
 
 	c = Corpus(corpus_id)
 	i = DocumentIngester(c)
-	i._compute_similarities(doc_ids)
+	i.compute_similarities(doc_ids)
 
