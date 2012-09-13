@@ -1,4 +1,5 @@
 import itertools
+import random
 
 import psycopg2.extras
 from django.db import connection
@@ -370,14 +371,20 @@ class Corpus(object):
 
     def phrase_overlap(self, target_doc_id, doc_set):
         """Return the number of times each phrase in the given document
-        is used in the document set.
-        
-        Used in conjunction with similar_docs() or clusters().
-        By calling repeatedly with different similarity cutoffs, the user can see
-        at what point a particular phrase stops being common in the set.
+        is used in a sample of the document set.
         
         Returns dictionary of phrase ID -> count & character offset.
         """
+
+        # since we're looking for phrases that are common in the
+        # document set, it's fine to sample. This makes problem
+        # tractable for large clusters.
+        if len(doc_set) > 100:
+            sampling_multiplier = len(doc_set) / 100.0
+            doc_set = random.sample(doc_set, 100)
+        else:
+            sampling_multiplier = 1
+
         
         self.cursor.execute("""
             with phrases_in_target_doc as (
@@ -396,7 +403,10 @@ class Corpus(object):
             group by phrase_id, t.indexes
         """, dict(corpus_id=self.id, target_doc_id=target_doc_id, doc_set=tuple(doc_set)))
         
-        return dict([(id, dict(indexes=indexes, count=count)) for (id, indexes, count) in self.cursor.fetchall()])
+
+
+        return dict([(id, dict(indexes=indexes, count=int(sampling_multiplier *count)))
+                    for (id, indexes, count) in self.cursor.fetchall()])
 
 
 def _order_members(cluster):
