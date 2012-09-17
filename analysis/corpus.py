@@ -304,6 +304,12 @@ class Corpus(object):
             
         return h
 
+    def update_hierarchy_cache(self):
+        """If corpus' hierarchy is already cached, then recompute."""
+        h = cache.get(self._hierarchy_cache_key())
+        if h:
+            new_h = self._compute_hierarchy(True)
+            cache.set(self._hierarchy_cache_key(), new_h)
 
     def _hierarchy_cache_key(self):
         return 'analysis.corpus.hierarchy-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in self.hierarchy_cutoffs]))
@@ -403,8 +409,6 @@ class Corpus(object):
             group by phrase_id, t.indexes
         """, dict(corpus_id=self.id, target_doc_id=target_doc_id, doc_set=tuple(doc_set)))
         
-
-
         return dict([(id, dict(indexes=indexes, count=int(sampling_multiplier *count)))
                     for (id, indexes, count) in self.cursor.fetchall()])
 
