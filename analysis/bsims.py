@@ -4,6 +4,7 @@ except:
 	pass
 import numpy
 import os
+import sys
 import tempfile
 from itertools import chain
 import shutil
@@ -90,9 +91,16 @@ def remove_documents(corpus_id, doc_ids):
 
 	deletion_set = set(doc_ids) # set could be faster than large list
 	with SimilarityWriter(corpus_id, temp_dir) as w:
+		i = 0
 		for (x, y, s) in SimilarityReader(corpus_id):
 			if x not in deletion_set and y not in deletion_set:
 				w.write(x, y, s)
+				
+				i += 1
+				if i % 10000000 == 0:
+					w.flush()
+					sys.stdout.write('.')
+					sys.stdout.flush()
 
 	shutil.rmtree(existing_dir)
 	shutil.move(os.path.join(temp_dir, str(corpus_id)), existing_dir)
