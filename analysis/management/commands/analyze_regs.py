@@ -102,8 +102,8 @@ def ingest_single_parse(docket, deletions, insertions, parser):
         i = DocumentIngester(c, parser=ngram_parser(4), compute_similarities=True)
     i.ingest(insertions)
 
-    print "Updating hierarchy, if cached, at %s..." % datetime.now()
-    c.update_hierarchy_cache()
+    print "Removing hierarchy, if cached, at %s..." % datetime.now()
+    c.delete_hierarchy_cache()
 
 
 def repair_missing_docket(docket):

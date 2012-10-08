@@ -310,6 +310,10 @@ class Corpus(object):
         if h:
             new_h = self._compute_hierarchy(True)
             cache.set(self._hierarchy_cache_key(), new_h)
+    
+    def delete_hierarchy_cache(self):
+        """Delete hierarchy cache if it exists."""
+        cache.delete(self._hierarchy_cache_key())
 
     def _hierarchy_cache_key(self):
         return 'analysis.corpus.hierarchy-%s-%s' % (self.id, ",".join([str(cutoff) for cutoff in self.hierarchy_cutoffs]))
