@@ -20,8 +20,8 @@ typedef struct cpartition {
 cpartition_ptr create_cpartition(int* values, int length);
 void free_cpartition(cpartition_ptr part);
 
-int cpartition_find(cpartition_ptr part, int x);
-int cpartition_find_by_value(cpartition_ptr part, int x);
+static inline int cpartition_find(cpartition_ptr part, int x);
+static inline int cpartition_find_by_value(cpartition_ptr part, int x);
 void cpartition_merge(cpartition_ptr part, int x, int y);
 
 #endif

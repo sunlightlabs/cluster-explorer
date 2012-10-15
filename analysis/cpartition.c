@@ -49,14 +49,14 @@ void free_cpartition(cpartition_ptr part) {
     free(part);
 }
 
-int cpartition_find(cpartition_ptr part, int x) {
+static inline int cpartition_find(cpartition_ptr part, int x) {
     if (part->parent[x] != x) {
         part->parent[x] = cpartition_find(part, part->parent[x]);
     }
     return part->parent[x];
 }
 
-int cpartition_find_by_value(cpartition_ptr part, int x) {
+static inline int cpartition_find_by_value(cpartition_ptr part, int x) {
     inthash_ptr s, tmp;
 
     HASH_FIND_INT(*(part->value_positions), &x, s );
