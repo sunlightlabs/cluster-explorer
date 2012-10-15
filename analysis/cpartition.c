@@ -49,24 +49,38 @@ void free_cpartition(cpartition_ptr part) {
     free(part);
 }
 
-static inline int cpartition_find(cpartition_ptr part, int x) {
+int cpartition_find(cpartition_ptr part, int x) {
     if (part->parent[x] != x) {
         part->parent[x] = cpartition_find(part, part->parent[x]);
     }
     return part->parent[x];
 }
 
-static inline int cpartition_find_by_value(cpartition_ptr part, int x) {
+static inline int _inl_cpartition_find(cpartition_ptr part, int x) {
+    if (part->parent[x] != x) {
+        part->parent[x] = cpartition_find(part, part->parent[x]);
+    }
+    return part->parent[x];
+}
+
+int cpartition_find_by_value(cpartition_ptr part, int x) {
     inthash_ptr s, tmp;
 
     HASH_FIND_INT(*(part->value_positions), &x, s );
-    return cpartition_find(part, s->value);
+    return _inl_cpartition_find(part, s->value);
+}
+
+static inline int _inl_cpartition_find_by_value(cpartition_ptr part, int x) {
+    inthash_ptr s, tmp;
+
+    HASH_FIND_INT(*(part->value_positions), &x, s );
+    return _inl_cpartition_find(part, s->value);
 }
 
 void cpartition_merge(cpartition_ptr part, int x, int y) {
     int x_root, y_root;
-    x_root = cpartition_find_by_value(part, x);
-    y_root = cpartition_find_by_value(part, y);
+    x_root = _inl_cpartition_find_by_value(part, x);
+    y_root = _inl_cpartition_find_by_value(part, y);
 
     if (x_root == y_root) {
         return;
