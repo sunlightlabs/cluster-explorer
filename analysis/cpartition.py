@@ -62,4 +62,5 @@ class cPartition(Partition):
     def free(self):
         if self.part is not None:
             libcpartition.free_cpartition(self.part)
+            self.part = None
         self.values = None
