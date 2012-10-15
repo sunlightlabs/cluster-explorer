@@ -24,8 +24,8 @@ class cPartition(Partition):
         self.part = libcpartition.create_cpartition(_values, self.count)
 
     def __del__(self):
-        print "freeing"
-        libcpartition.free_cpartition(self.part)
+        if self.part is not None:
+            libcpartition.free_cpartition(self.part)
 
     def _find(self, x):
         return libcpartition.cpartition_find(self.part, x)
@@ -58,3 +58,8 @@ class cPartition(Partition):
 
     def representative(self, x):
         return self.values[libcpartition.cpartition_find_by_value(self.part, x)]
+
+    def free(self):
+        if self.part is not None:
+            libcpartition.free_cpartition(self.part)
+        self.values = None

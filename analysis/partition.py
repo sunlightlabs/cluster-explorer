@@ -81,5 +81,10 @@ class Partition(object):
         """Return the value that represents the set containing x."""
         
         return self.values[self._find(self.value_positions[x])]
+
+    def free(self, x):
+        """Noop on the python version, but on the C version allows consumers to preempt garbage collection and free early."""
+        
+        pass
     
         

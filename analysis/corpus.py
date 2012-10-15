@@ -382,6 +382,7 @@ class Corpus(object):
 
             partition.merge(x, y)
 
+        partition.free()
         return hierarchy
 
 
