@@ -3,6 +3,8 @@ import csv
 import re
 from cStringIO import StringIO
 import zlib
+import lz4
+import os
 
 from django.conf import settings
 
@@ -81,6 +83,46 @@ class BufferedCompressedWriter(object):
         self.outputstream.flush()
         self.compressor = None
 
+class LZ4CompressedWriter(BufferedCompressedWriter):
+    def __init__(self, outdir, buffer_size=_DEFAULT_BUFFER_SIZE):
+        self.outputdir = outdir
+        if not os.path.exists(outdir):
+            os.mkdir(outdir)
+
+        self.outputstream = open(self._get_next_file(), 'w')
+        self.buffer_size = buffer_size
+        self.buffer = StringIO()
+
+    def flush(self, keep_closed=False):
+        buffered_bytes = self.buffer.getvalue()
+        self.buffer.truncate(0)
+
+        if len(buffered_bytes) == 0:
+            # we don't want to write an empty file because decompressing it does weird things
+            if keep_closed:
+                name = self.outputstream.name
+                self.outputstream.close()
+                os.unlink(name)
+                return
+            else:
+                # if we're still writing, this can be a noop
+                return
+
+        compressed_bytes = lz4.compressHC(buffered_bytes)
+
+        self.outputstream.write(compressed_bytes)
+        self.outputstream.close()
+        if not keep_closed:
+            self.outputstream = open(self._get_next_file(), 'w')
+
+    def close(self):
+        self.flush(keep_closed=True)
+
+    def _get_next_file(self):
+        filenums = [int(fname.split('.')[0]) for fname in os.listdir(self.outputdir) if fname.endswith('.lz4')]
+        num = max(filenums) + 1 if filenumes else 0
+        return os.path.join(self.outputdir, "%s.lz4" % num)
+
 
 class BufferedCompressedReader(object):
 
@@ -132,6 +174,37 @@ class BufferedCompressedReader(object):
         self.decompressed_buffer = StringIO()
         self.decompressed_buffer.write(decompressed[byte_count:])
         return decompressed[:byte_count]
+
+class LZ4CompressedReader(BufferedCompressedReader):
+    def __init__(self, indir, buffer_size=_DEFAULT_BUFFER_SIZE):
+        self.inputdir = indir
+        self.decompressed_buffer = StringIO()
+        self.file_iter = self._get_file_iter()
+
+    def close(self):
+        self.decompressed_buffer = None
+
+    def read(self, byte_count=None):
+        while self.decompressed_buffer.tell() < byte_count:
+            try:
+                fname = self.file_iter.next()
+            except StopIteration:
+                break
+
+            compressed = open(fname).read()
+            new_uncompressed_bytes = lz4.uncompress(compressed) if compressed else ""
+            self.decompressed_buffer.write(new_uncompressed_bytes)
+
+        decompressed = self.decompressed_buffer.getvalue()
+        self.decompressed_buffer.close()
+        self.decompressed_buffer = StringIO()
+        self.decompressed_buffer.write(decompressed[byte_count:])
+        return decompressed[:byte_count]
+
+    def _get_file_iter(self):
+        filenums = sorted([int(fname.split('.')[0]) for fname in os.listdir(self.outputdir) if fname.endswith('.lz4')])
+        files = ["%s.lz4" % num for num in filenums]
+        return iter(files)
 
 
 def binary_search(a, x, key=None):
