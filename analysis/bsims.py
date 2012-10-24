@@ -57,7 +57,7 @@ class SimilarityWriter(object):
 		for w in self.writers:
 			w.close()
 
-def LZ4SimilarityWriter(SimilarityWriter):
+class LZ4SimilarityWriter(SimilarityWriter):
 	def __init__(self, corpus_id, root=DATA_DIR):
 		dir = os.path.join(root, str(corpus_id))
 		if not os.path.isdir(dir):
@@ -88,14 +88,14 @@ class SimilarityReader(object):
 
 				serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 
-def LZ4SimilarityReader(SimilarityReader):
+class LZ4SimilarityReader(SimilarityReader):
 	def __iter__(self):
 		return chain.from_iterable(
 			(self._file_iter(os.path.join(self.dir, "%s.lz4sims" % str(9-i)), STORED_SIMILARITY_CUTOFFS[i] + 0.05) 
 			for i in range(len(STORED_SIMILARITY_CUTOFFS))))
 
 	def _file_iter(self, filename, similarity):
-		with BufferedCompressedReader(filename) as reader:
+		with LZ4CompressedReader(filename) as reader:
 
 			serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 			while serialized_bytes:

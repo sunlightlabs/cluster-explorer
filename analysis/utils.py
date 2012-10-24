@@ -120,7 +120,7 @@ class LZ4CompressedWriter(BufferedCompressedWriter):
 
     def _get_next_file(self):
         filenums = [int(fname.split('.')[0]) for fname in os.listdir(self.outputdir) if fname.endswith('.lz4')]
-        num = max(filenums) + 1 if filenumes else 0
+        num = max(filenums) + 1 if filenums else 0
         return os.path.join(self.outputdir, "%s.lz4" % num)
 
 
@@ -202,8 +202,8 @@ class LZ4CompressedReader(BufferedCompressedReader):
         return decompressed[:byte_count]
 
     def _get_file_iter(self):
-        filenums = sorted([int(fname.split('.')[0]) for fname in os.listdir(self.outputdir) if fname.endswith('.lz4')])
-        files = ["%s.lz4" % num for num in filenums]
+        filenums = sorted([int(fname.split('.')[0]) for fname in os.listdir(self.inputdir) if fname.endswith('.lz4')])
+        files = [os.path.join(self.inputdir, "%s.lz4" % num) for num in filenums]
         return iter(files)
 
 
