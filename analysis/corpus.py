@@ -345,7 +345,7 @@ class Corpus(object):
         cutoffs_remaining = list(self.hierarchy_cutoffs)
         # note: (-1,-1,0) terminator is necessary so that hierarchy building
         # code has a chance to run one more time after last sim is read.
-        for (x, y, sim) in itertools.chain(bsims.SimilarityReader(self.id), [(-1,-1,0)]):
+        for (x, y, sim) in itertools.chain(bsims.get_similarity_reader(self.id), [(-1,-1,0)]):
             while cutoffs_remaining and sim < cutoffs_remaining[0]:
                 new_hierarchy = [
                     {'name':partition.representative(doc_ids[0]),

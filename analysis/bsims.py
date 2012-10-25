@@ -67,6 +67,13 @@ class LZ4SimilarityWriter(SimilarityWriter):
 		self.writers = [LZ4CompressedWriter(os.path.join(dir, "%s.lz4sims" % str(9-i))) 
 						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
 
+def get_similarity_writer(corpus_id, root=DATA_DIR):
+	dir = os.path.join(root, str(corpus_id))
+	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.lz4sims")):
+		return LZ4SimilarityWriter(corpus_id, root)
+	else:
+		return SimilarityWriter(corpus_id, root)
+
 class SimilarityReader(object):
 
 	def __init__(self, corpus_id, root=DATA_DIR):
@@ -105,6 +112,14 @@ class LZ4SimilarityReader(SimilarityReader):
 
 				serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 
+def get_similarity_reader(corpus_id, root=DATA_DIR):
+	dir = os.path.join(root, str(corpus_id))
+	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.lz4sims")):
+		print "using lz4"
+		return LZ4SimilarityReader(corpus_id, root)
+	else:
+		return SimilarityReader(corpus_id, root)
+
 def remove_documents(corpus_id, doc_ids):
 	"""Remove any similarity containing the given doc_ids."""
 	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
@@ -116,9 +131,11 @@ def remove_documents(corpus_id, doc_ids):
 	temp_dir = tempfile.mkdtemp()
 
 	deletion_set = set(doc_ids) # set could be faster than large list
-	with SimilarityWriter(corpus_id, temp_dir) as w:
+	reader = get_similarity_reader(corpus_id)
+	Writer = LZ4SimilarityWriter if type(reader) == LZ4SimilarityReader else SimilarityWriter
+	with Writer(corpus_id, temp_dir) as w:
 		i = 0
-		for (x, y, s) in SimilarityReader(corpus_id):
+		for (x, y, s) in reader:
 			if x not in deletion_set and y not in deletion_set:
 				w.write(x, y, s)
 				
