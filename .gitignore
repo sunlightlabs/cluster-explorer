@@ -11,3 +11,7 @@ local_settings.py
 data
 data/*
 sim_data/
+*.so
+*.dylib
+*.gch
+_test*

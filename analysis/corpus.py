@@ -5,7 +5,13 @@ import psycopg2.extras
 from django.db import connection
 from django.core.cache import cache
 
-from partition import Partition
+from django.conf import settings
+if getattr(settings, "USE_C_PARTITION", False):
+    print "Using C partition"
+    from cpartition import cPartition as Partition
+else:
+    from partition import Partition
+
 from utils import profile
 import bsims
 
@@ -376,6 +382,7 @@ class Corpus(object):
 
             partition.merge(x, y)
 
+        partition.free()
         return hierarchy
 
 
