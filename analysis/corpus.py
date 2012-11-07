@@ -348,10 +348,18 @@ class Corpus(object):
         pruning_size = max(2, len(all_docs) / 100);
         hierarchy = {}
 
+        similarity_reader = bsims.get_similarity_reader(self.id)
+        # short-circuit the python-side computation if everything lines up right
+        if similarity_reader isinstance(similarity_reader, LZ4SimilarityReader) and hasattr(partition, "merge_lz4"):
+            # we can use the C stuff
+            out = _compute_hierarchy_fast(compute_summaries, similarity_reader, partition, pruning_size)
+            partition.free()
+            return out
+
         cutoffs_remaining = list(self.hierarchy_cutoffs)
         # note: (-1,-1,0) terminator is necessary so that hierarchy building
         # code has a chance to run one more time after last sim is read.
-        for (x, y, sim) in itertools.chain(bsims.get_similarity_reader(self.id), [(-1,-1,0)]):
+        for (x, y, sim) in itertools.chain(similarity_reader, [(-1,-1,0)]):
             while cutoffs_remaining and sim < cutoffs_remaining[0]:
                 new_hierarchy = [
                     {'name':partition.representative(doc_ids[0]),
@@ -384,6 +392,39 @@ class Corpus(object):
 
         partition.free()
         return hierarchy
+
+    def _compute_hierarchy_fast(compute_summaries, similarity_reader, partition, pruning_size):
+        print "Using fast hierarchy"
+        hierarchy = {}
+        for cutoff, files in similarity_reader.files_by_cutoff():
+            for cfile in files:
+                partition.merge_lz4(cfile)
+
+            new_hierarchy = [
+                {'name':partition.representative(doc_ids[0]),
+                 'size': len(doc_ids),
+                 'members': doc_ids,
+                 'children': [],
+                 'cutoff': cutoff,
+                 'phrases': [text for (id, score, text) in self._representative_phrases(doc_ids, 5)]
+                            if compute_summaries else None
+                }
+                for doc_ids in partition.sets()
+                if len(doc_ids) > pruning_size
+            ]
+            
+            for prev_cluster in hierarchy:
+                for cluster in new_hierarchy:
+                    if partition.representative(prev_cluster['name']) == cluster['name']:
+                        cluster['children'].append(prev_cluster)
+            
+            for cluster in new_hierarchy:
+                _order_members(cluster)
+
+            hierarchy = new_hierarchy
+
+        return hierarchy
+
 
 
     def phrase_overlap(self, target_doc_id, doc_set):

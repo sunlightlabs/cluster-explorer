@@ -12,6 +12,7 @@ ffi.cdef("void free_cpartition(void* part);")
 ffi.cdef("int cpartition_find(void* part, int x);")
 ffi.cdef("int cpartition_find_by_value(void* part, int x);")
 ffi.cdef("void cpartition_merge(void* part, int x, int y);")
+ffi.cdef("void merge_lz4_file(void* part, char* file_name);")
 libcpartition = ffi.dlopen(os.path.join(os.path.dirname(os.path.abspath(__file__)), "libcpartition.%s" % libtype))
 
 class cPartition(Partition):
@@ -32,6 +33,9 @@ class cPartition(Partition):
 
     def merge(self, x, y):
         libcpartition.cpartition_merge(self.part, x, y)
+
+    def merge_lz4(self, lz4_file):
+        libcpartition.merge_lz4_file(self.part, lz4_file)
 
     def sets(self):
         sets = defaultdict(list)

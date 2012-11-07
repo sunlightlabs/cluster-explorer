@@ -112,6 +112,15 @@ class LZ4SimilarityReader(SimilarityReader):
 
 				serialized_bytes = reader.read(SIMILARITY_IO_BUFFER_SIZE)
 
+	def files_by_cutoff(self):
+		return (
+			(
+				STORED_SIMILARITY_CUTOFFS[i],
+				sorted(os.listdir(os.path.join(self.dir, "%s.lz4sims" % str(9-i))), key=lambda x: int(x.split('.')[0])),
+			)
+			for i in range(len(STORED_SIMILARITY_CUTOFFS))
+		)
+
 def get_similarity_reader(corpus_id, root=DATA_DIR):
 	dir = os.path.join(root, str(corpus_id))
 	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.lz4sims")):
