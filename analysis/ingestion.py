@@ -6,7 +6,7 @@ import sys
 from parser import sentence_parse
 from phrases import PhraseSequencer
 from utils import jaccard, UnicodeWriter
-from bsims import SimilarityWriter
+from bsims import get_similarity_writer
 
 class DocumentIngester(object):
     
@@ -121,7 +121,7 @@ class DocumentIngester(object):
         if new_doc_ids is None:
             new_doc_ids = docs.keys()
     
-        with SimilarityWriter(self.corpus.id) as writer:
+        with get_similarity_writer(self.corpus.id) as writer:
             i = 0
             for (x, y) in self._pairs_for_comparison(docs.keys(), new_doc_ids):
                 similarity = jaccard(docs[x], docs[y])
