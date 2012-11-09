@@ -116,7 +116,10 @@ class LZ4SimilarityReader(SimilarityReader):
 		return (
 			(
 				STORED_SIMILARITY_CUTOFFS[i],
-				sorted(os.listdir(os.path.join(self.dir, "%s.lz4sims" % str(9-i))), key=lambda x: int(x.split('.')[0])),
+				[
+					os.path.join(self.dir, "%s.lz4sims" % str(9-i), f)	
+					for f in sorted(os.listdir(os.path.join(self.dir, "%s.lz4sims" % str(9-i))), key=lambda x: int(x.split('.')[0]))
+				],
 			)
 			for i in range(len(STORED_SIMILARITY_CUTOFFS))
 		)

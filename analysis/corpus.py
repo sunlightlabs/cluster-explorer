@@ -350,9 +350,9 @@ class Corpus(object):
 
         similarity_reader = bsims.get_similarity_reader(self.id)
         # short-circuit the python-side computation if everything lines up right
-        if similarity_reader isinstance(similarity_reader, LZ4SimilarityReader) and hasattr(partition, "merge_lz4"):
+        if isinstance(similarity_reader, bsims.LZ4SimilarityReader) and hasattr(partition, "merge_lz4"):
             # we can use the C stuff
-            out = _compute_hierarchy_fast(compute_summaries, similarity_reader, partition, pruning_size)
+            out = self._compute_hierarchy_fast(compute_summaries, similarity_reader, partition, pruning_size)
             partition.free()
             return out
 
@@ -393,7 +393,7 @@ class Corpus(object):
         partition.free()
         return hierarchy
 
-    def _compute_hierarchy_fast(compute_summaries, similarity_reader, partition, pruning_size):
+    def _compute_hierarchy_fast(self, compute_summaries, similarity_reader, partition, pruning_size):
         print "Using fast hierarchy"
         hierarchy = {}
         for cutoff, files in similarity_reader.files_by_cutoff():
