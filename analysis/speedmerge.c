@@ -63,11 +63,13 @@ static inline int decompress_lz4_file(char* file_name, char** dest_ptr) {
 
 void merge_lz4_file(cpartition_ptr part, char* file_name) {
     char* buffer;
+    unsigned int* ibuffer;
     int size, i;
 
-    size = decompress_lz4_file(file_name, &buffer);
+    size = decompress_lz4_file(file_name, &buffer) / sizeof(unsigned int);
+    ibuffer = (unsigned int *) buffer;
 
-    for (i = 0; i < size; i += 2 * sizeof(char)) {
-        cpartition_merge(part, *(int*)(buffer + i), *(int*)(buffer + i + sizeof(int)));
+    for (i = 0; i < size; i += 2) {
+        cpartition_merge(part, ibuffer[i], ibuffer[i + 1]);
     }
 }
