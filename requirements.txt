@@ -1,3 +1,4 @@
-django==1.4
+django==1.4.3
 psycopg2==2.4.5
+-e git+https://github.com/apendleton/python-lz4-cffi.git#egg=lz4
 nltk
