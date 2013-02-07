@@ -1,4 +1,4 @@
 django==1.4.3
--e git+https://github.com/sunlightlabs/psycopg2-ctypes.git#egg=psycopg2ct
+-e git+https://github.com/apendleton/psycopg2cffi.git#egg=psycopg2cffi
 nltk
--e git+https://github.com/apendleton/python-lz4-cffi.git#egg=lz4
+git+https://github.com/apendleton/python-lz4-cffi.git#egg=lz4
