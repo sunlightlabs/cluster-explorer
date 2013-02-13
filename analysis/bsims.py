@@ -69,10 +69,11 @@ class LZ4SimilarityWriter(SimilarityWriter):
 
 def get_similarity_writer(corpus_id, root=DATA_DIR):
 	dir = os.path.join(root, str(corpus_id))
-	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.lz4sims")):
-		return LZ4SimilarityWriter(corpus_id, root)
-	else:
+	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.sims")):
 		return SimilarityWriter(corpus_id, root)
+	else:
+		print "using lz4"
+		return LZ4SimilarityWriter(corpus_id, root)
 
 class SimilarityReader(object):
 
@@ -126,11 +127,11 @@ class LZ4SimilarityReader(SimilarityReader):
 
 def get_similarity_reader(corpus_id, root=DATA_DIR):
 	dir = os.path.join(root, str(corpus_id))
-	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.lz4sims")):
+	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.sims")):
+		return SimilarityReader(corpus_id, root)
+	else:
 		print "using lz4"
 		return LZ4SimilarityReader(corpus_id, root)
-	else:
-		return SimilarityReader(corpus_id, root)
 
 def remove_documents(corpus_id, doc_ids):
 	"""Remove any similarity containing the given doc_ids."""
