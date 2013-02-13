@@ -162,7 +162,7 @@ def remove_documents(corpus_id, doc_ids):
 	shutil.move(os.path.join(temp_dir, str(corpus_id)), existing_dir)
 	shutil.rmtree(temp_dir)
 
-def convert_to_lz4(corpus_id, preserve_zlib=False):
+def convert_to_lz4(corpus_id, preserve_zlib=False, dest_data_dir=DATA_DIR):
 	"""Convert a zlib corpus to an LZ4 corpus."""
 	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
 	if not os.path.isdir(existing_dir):
@@ -170,7 +170,7 @@ def convert_to_lz4(corpus_id, preserve_zlib=False):
 		print "skipping, couldn't find %s" % existing_dir
 		return
 
-	with LZ4SimilarityWriter(corpus_id) as w:
+	with LZ4SimilarityWriter(corpus_id, root=dest_data_dir) as w:
 		i = 0
 		for (x, y, s) in SimilarityReader(corpus_id):
 			w.write(x, y, s)
