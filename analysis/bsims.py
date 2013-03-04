@@ -185,6 +185,15 @@ def convert_to_lz4(corpus_id, preserve_zlib=False, dest_data_dir=DATA_DIR):
 		for sims_file in [fname for fname in os.listdir(existing_dir) if fname.endswith(".sims")]:
 			os.unlink(sims_file)
 
+def bulk_convert(corpus_ids, dest_data_dir):
+	"""Convert a bunch of corpora to LZ4, in a separate process to prevent memory runaway."""
+	import multiprocessing
+	for corpus_id in corpus_ids:
+		print "Converting corpus %s to LZ4..." % corpus_id
+		p = multiprocessing.Process(target=convert_to_lz4, args=[corpus_id, True, dest_data_dir])
+		p.start()
+		p.join()
+
 def remove_all(corpus_id):
 	"""Completely remove similarity directory for corpus."""
 	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
