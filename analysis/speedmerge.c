@@ -72,4 +72,5 @@ void merge_lz4_file(cpartition_ptr part, char* file_name) {
     for (i = 0; i < size; i += 2) {
         cpartition_merge(part, ibuffer[i], ibuffer[i + 1]);
     }
+    free(buffer);
 }
