@@ -253,43 +253,7 @@ class Corpus(object):
     ### methods returning information about clustering ###
 
     @profile
-    def _representative_phrases(self, doc_ids, limit=10):
-        """Return phrases representative of given set of documents.
-
-        'Representative' means that the phrases are more common
-        within the document set than they are in the corpus as a whole.
-
-        Result is list of (phrase ID, phrase text, [document IDs in which phrase occurs]).
-        """
-
-        if not doc_ids:
-            return []
-
-        self.cursor.execute("""
-            select p.phrase_id, score, substring(text for (o.indexes[1].end - o.indexes[1].start) from o.indexes[1].start + 1)
-            from (
-                select phrase_id, intersection::float / (%(target_size)s + count(distinct document_id) - intersection) as score, example_doc_id
-                from (
-                    select phrase_id, count(distinct document_id) as intersection, min(document_id) as example_doc_id
-                    from phrase_occurrences
-                    where
-                        corpus_id = %(corpus_id)s
-                        and document_id in %(doc_ids)s
-                    group by phrase_id
-                ) candidate_phrases
-                inner join (select * from phrase_occurrences where corpus_id = %(corpus_id)s) all_docs using (phrase_id)
-                group by phrase_id, intersection, example_doc_id
-                order by score desc
-                limit %(limit)s
-            ) p
-            inner join documents d on d.corpus_id = %(corpus_id)s and d.document_id = p.example_doc_id
-            inner join phrase_occurrences o on o.corpus_id = %(corpus_id)s and o.phrase_id = p.phrase_id and o.document_id = p.example_doc_id
-        """, dict(corpus_id=self.sentence_corpus_id, doc_ids=tuple(doc_ids), target_size=len(doc_ids), limit=limit))
-        
-        return self.cursor.fetchall()
-
-    @profile
-    def _all_representative_phrases(self, hierarchy, limit=10):
+    def _add_representative_phrases(self, hierarchy, limit=10):
         # flatten hierarhcy        
         clusters = []
         def walk_clusters(h):
@@ -403,9 +367,7 @@ class Corpus(object):
     
     @profile
     def _compute_hierarchy_summaries(self, h):
-        for cluster in h:
-            cluster['phrases'] = [text for (id, score, text) in self._representative_phrases(cluster['members'], 5)]
-            self._compute_hierarchy_summaries(cluster['children'])
+        return self._add_representative_phrases(h, limit=5)
 
     @profile
     def _compute_hierarchy(self, compute_summaries):
@@ -443,8 +405,7 @@ class Corpus(object):
                      'members': doc_ids,
                      'children': [],
                      'cutoff': cutoffs_remaining[0],
-                     'phrases': [text for (id, score, text) in self._representative_phrases(doc_ids, 5)]
-                                if compute_summaries else None
+                     'phrases': None
                     }
                     for doc_ids in partition.sets()
                     if len(doc_ids) > pruning_size
@@ -467,6 +428,10 @@ class Corpus(object):
             partition.merge(x, y)
 
         partition.free()
+
+        if compute_summaries:
+            self._add_representative_phrases(hierarchy, limit=5)
+
         return hierarchy
 
     def _compute_hierarchy_fast(self, compute_summaries, similarity_reader, partition, pruning_size):
@@ -482,8 +447,7 @@ class Corpus(object):
                  'members': doc_ids,
                  'children': [],
                  'cutoff': cutoff,
-                 'phrases': [text for (id, score, text) in self._representative_phrases(doc_ids, 5)]
-                            if compute_summaries else None
+                 'phrases': None
                 }
                 for doc_ids in partition.sets()
                 if len(doc_ids) > pruning_size
@@ -498,6 +462,9 @@ class Corpus(object):
                 _order_members(cluster)
 
             hierarchy = new_hierarchy
+
+        if compute_summaries:
+            self._add_representative_phrases(hierarchy, limit=5)
 
         return hierarchy
 
