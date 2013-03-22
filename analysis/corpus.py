@@ -1,5 +1,6 @@
 import itertools
 import random
+from collections import defaultdict
 
 import psycopg2.extras
 from django.db import connection
@@ -12,7 +13,12 @@ if getattr(settings, "USE_C_PARTITION", False):
 else:
     from partition import Partition
 
-from utils import profile
+try:
+    import numpypy as numpy
+except ImportError:
+    import numpy
+
+from utils import profile, wirth_n_largest
 import bsims
 
 # Django connection is a wrappers around psycopg2 connection,
@@ -282,6 +288,76 @@ class Corpus(object):
         
         return self.cursor.fetchall()
 
+    @profile
+    def _all_representative_phrases(self, hierarchy, limit=10):
+        # flatten hierarhcy        
+        clusters = []
+        def walk_clusters(h):
+            for cluster in h:
+                clusters.append(("%s_%s" % (int(100*cluster['cutoff']), cluster['name']), cluster))
+                walk_clusters(cluster['children'])
+        walk_clusters(hierarchy)
+
+        # make a list of clusters for each document
+        doc_clusters = defaultdict(list)
+        for i, (cluster_id, cluster) in enumerate(clusters):
+            for doc in cluster['members']:
+                doc_clusters[doc].append(i)
+
+        # grab all the phrases in the corpus and map them to an index
+        phrase_dict = {}
+        phrases = []
+        self.cursor.execute("""
+            select phrase_id from phrases where corpus_id = %(corpus_id)s
+        """, dict(corpus_id=self.sentence_corpus_id))
+        for i, (phrase,) in enumerate(self.cursor):
+            phrases.append(phrase)
+            phrase_dict[phrase] = i
+
+        # build the tracking array
+        cluster_counts = numpy.zeros((len(clusters), len(phrases)), 'f')
+        total_counts = numpy.zeros(len(phrases), 'f')
+
+        # grab all the occurrences
+        self.cursor.execute("""
+            select distinct document_id, phrase_id from phrase_occurrences where corpus_id = %(corpus_id)s
+        """, dict(corpus_id=self.sentence_corpus_id))
+
+        # iterate over them and do the counting
+        empty = []
+        for document_id, phrase_id in self.cursor:
+            affected_clusters = doc_clusters.get(document_id, empty)
+            phrase_offset = phrase_dict[phrase_id]
+            total_counts[phrase_offset] += 1.0
+            for cluster in affected_clusters:
+                cluster_counts[cluster,phrase_offset] += 1.0
+
+        # convert counts into scores
+        top_phrases = []
+        for i in xrange(len(clusters)):
+            scores = cluster_counts[i] / (float(len(clusters[i][1]['members'])) + total_counts - cluster_counts[i])
+            phrase_idxs = wirth_n_largest(scores, limit)
+            top_phrases.append([phrases[idx] for idx in phrase_idxs])
+
+        all_phrase_ids = tuple(set(itertools.chain.from_iterable(top_phrases)))
+        self.cursor.execute("""
+            select p.phrase_id, substring(text for (p.indexes[1].end - p.indexes[1].start) from p.indexes[1].start + 1)
+            from (
+                select distinct on (phrase_id) document_id, phrase_id, indexes
+                    from phrase_occurrences
+                    where
+                        corpus_id = %(corpus_id)s
+                        and phrase_id in %(phrase_ids)s
+                ) p
+            inner join documents d on d.corpus_id = %(corpus_id)s and d.document_id = p.document_id
+        """, dict(corpus_id=self.sentence_corpus_id, phrase_ids=all_phrase_ids))
+
+        phrase_text = dict(self.cursor.fetchall())
+
+        for i, (cluster_id, cluster) in enumerate(clusters):
+            cluster['phrases'] = [phrase_text.get(j, "") for j in top_phrases[i]]
+
+        return hierarchy
 
     @profile
     def get_similarities(self):

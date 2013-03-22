@@ -5,6 +5,10 @@ from cStringIO import StringIO
 import zlib
 import lz4
 import os
+try:
+    import numpypy as numpy
+except ImportError:
+    import numpy
 
 from django.conf import settings
 
@@ -270,3 +274,31 @@ def jaccard(x, y):
 
     return float(intersection_size) / union_size if union_size != 0 else 0
 
+def wirthselect(array, k):
+    """ Niklaus Wirth's selection algortithm """
+    a = array.copy()
+    l = 0
+    m = a.shape[0] - 1
+    while l < m:
+        x = a[k]
+        i = l
+        j = m
+        while 1:
+            while a[i] < x: i += 1
+            while x < a[j]: j -= 1
+            if i <= j:
+                tmp = a[i]
+                a[i] = a[j]
+                a[j] = tmp
+                i += 1
+                j -= 1
+            if i > j: break
+        if j < k: l = i
+        if k < i: m = j
+    return a
+
+def wirth_n_largest(a, n):
+    selected = wirthselect(a, a.size - n)
+    nth = selected[-n:].min()
+    maxes = [idx for idx in xrange(a.size) if a[idx] >= nth]
+    return numpy.array(sorted(maxes, key=lambda x: a[x], reverse=True)[:n])
