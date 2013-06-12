@@ -16,19 +16,22 @@ from utils import BufferedCompressedWriter, BufferedCompressedReader, LZ4Compres
 
 DATA_DIR = getattr(settings, 'SIMS_DATA_DIR', '.')
 
+TYPE_PREFERENCE = ('lz4', 'zlib', 'lsm')
+TYPE_EXTENSIONS = {'lz4': 'lz4sims', 'zlib': 'sims', 'lsm': 'lsmsims'}
+
 STORED_SIMILARITY_CUTOFFS = [0.9, 0.8, 0.7, 0.6, 0.5]
 SIMILARITY_IO_BUFFER_SIZE = 100 * 1024 * 1024 # 100MB, enough so vast majority of corpora fit in single buffer
 
 class SimilarityWriter(object):
-
 	def __init__(self, corpus_id, root=DATA_DIR):
 		dir = os.path.join(root, str(corpus_id))
 		if not os.path.isdir(dir):
 			os.mkdir(dir)
 		self.buffers = [list() for _ in range(len(STORED_SIMILARITY_CUTOFFS))]
 
-		self.writers = [BufferedCompressedWriter(open(os.path.join(dir, "%s.sims" % str(9-i)), 'a')) 
-						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
+		@property
+		def writers(self):
+			raise NotImplementedError
 
 	def __enter__(self):
 		return self
@@ -57,29 +60,44 @@ class SimilarityWriter(object):
 		for w in self.writers:
 			w.close()
 
-class LZ4SimilarityWriter(SimilarityWriter):
+class ZlibSimilarityWriter(SimilarityWriter):
 	def __init__(self, corpus_id, root=DATA_DIR):
-		dir = os.path.join(root, str(corpus_id))
-		if not os.path.isdir(dir):
-			os.mkdir(dir)
-		self.buffers = [list() for _ in range(len(STORED_SIMILARITY_CUTOFFS))]
-
-		self.writers = [LZ4CompressedWriter(os.path.join(dir, "%s.lz4sims" % str(9-i))) 
+		super(ZlibSimilarityWriter, self).__init__(corpus_id, root)
+		self.writers = [BufferedCompressedWriter(open(os.path.join(dir, "%s.sims" % str(9-i)), 'a')) 
 						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
 
-def get_similarity_writer(corpus_id, root=DATA_DIR):
+class LZ4SimilarityWriter(SimilarityWriter):
+	def __init__(self, corpus_id, root=DATA_DIR):
+		super(ZlibSimilarityWriter, self).__init__(corpus_id, root)
+		self.writers = [LZ4CompressedWriter(os.path.join(dir, "%s.lz4sims" % str(9-i)))
+						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
+
+TYPE_WRITERS = {'zlib': ZlibSimilarityWriter, 'lz4': LZ4SimilarityWriter}
+
+def get_similarity_data_type(corpus_id, root=DATA_DIR):
 	dir = os.path.join(root, str(corpus_id))
-	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.sims")):
-		return SimilarityWriter(corpus_id, root)
-	else:
-		print "using lz4"
-		return LZ4SimilarityWriter(corpus_id, root)
+	data_type = None
+
+	# if any of the data files exist, in order of preference, use those
+	if os.path.exists(dir):
+		for dtype in type_preference:
+			if os.path.exists(os.path.join(dir, "5.%s" % TYPE_EXTENSIONS[dtype])):
+				data_type = dtype
+				break
+	# if we still don't know, use the default
+	if data_type is None:
+		data_type = TYPE_PREFERENCE[0]
+
+def get_similarity_writer(corpus_id, root=DATA_DIR, force_data_type=None):
+	data_type = force_data_type if force_data_type else get_similarity_data_type(corpus_id, root)
+	print "writer using %s" % data_type
+	return TYPE_WRITERS[data_type](corpus_id, root)
 
 class SimilarityReader(object):
-
 	def __init__(self, corpus_id, root=DATA_DIR):
 		self.dir = os.path.join(root, str(corpus_id))
 
+class ZlibSimilarityReader(SimilarityReader):
 	def __iter__(self):
 		return chain.from_iterable(
 			(self._file_iter(os.path.join(self.dir, "%s.sims" % str(9-i)), STORED_SIMILARITY_CUTOFFS[i] + 0.05) 
@@ -125,13 +143,12 @@ class LZ4SimilarityReader(SimilarityReader):
 			for i in range(len(STORED_SIMILARITY_CUTOFFS))
 		)
 
-def get_similarity_reader(corpus_id, root=DATA_DIR):
-	dir = os.path.join(root, str(corpus_id))
-	if os.path.exists(dir) and os.path.exists(os.path.join(dir, "5.sims")):
-		return SimilarityReader(corpus_id, root)
-	else:
-		print "using lz4"
-		return LZ4SimilarityReader(corpus_id, root)
+TYPE_READERS = {'zlib': ZlibSimilarityReader, 'lz4': LZ4SimilarityReader}
+
+def get_similarity_reader(corpus_id, root=DATA_DIR, force_data_type=None):
+	data_type = force_data_type if force_data_type else get_similarity_data_type(corpus_id, root)
+	print "reader using %s" % data_type
+	return TYPE_READERS[data_type](corpus_id, root)
 
 def remove_documents(corpus_id, doc_ids):
 	"""Remove any similarity containing the given doc_ids."""
@@ -162,7 +179,7 @@ def remove_documents(corpus_id, doc_ids):
 	shutil.move(os.path.join(temp_dir, str(corpus_id)), existing_dir)
 	shutil.rmtree(temp_dir)
 
-def convert_to_lz4(corpus_id, preserve_zlib=False, dest_data_dir=DATA_DIR):
+def convert_data_format(corpus_id, preserve_src=True, dest_data_dir=DATA_DIR, src_data_format="zlib", dest_data_format="lz4"):
 	"""Convert a zlib corpus to an LZ4 corpus."""
 	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
 	if not os.path.isdir(existing_dir):
@@ -170,9 +187,9 @@ def convert_to_lz4(corpus_id, preserve_zlib=False, dest_data_dir=DATA_DIR):
 		print "skipping, couldn't find %s" % existing_dir
 		return
 
-	with LZ4SimilarityWriter(corpus_id, root=dest_data_dir) as w:
+	with TYPE_WRITERS[dest_data_format](corpus_id, root=dest_data_dir) as w:
 		i = 0
-		for (x, y, s) in SimilarityReader(corpus_id):
+		for (x, y, s) in TYPE_READERS[src_data_format](corpus_id):
 			w.write(x, y, s)
 			
 			i += 1
@@ -181,16 +198,16 @@ def convert_to_lz4(corpus_id, preserve_zlib=False, dest_data_dir=DATA_DIR):
 				sys.stdout.write('.')
 				sys.stdout.flush()
 
-	if not preserve_zlib:
-		for sims_file in [fname for fname in os.listdir(existing_dir) if fname.endswith(".sims")]:
+	if not preserve_src:
+		for sims_file in [fname for fname in os.listdir(existing_dir) if fname.endswith(".%s" % TYPE_EXTENSIONS[src_data_format])]:
 			os.unlink(sims_file)
 
-def bulk_convert(corpus_ids, dest_data_dir):
-	"""Convert a bunch of corpora to LZ4, in a separate process to prevent memory runaway."""
+def bulk_convert(corpus_ids, dest_data_dir, src_data_format="zlib", dest_data_format="lz4"):
+	"""Convert a bunch of corpora from one format to another, in a separate process to prevent memory runaway."""
 	import multiprocessing
 	for corpus_id in corpus_ids:
-		print "Converting corpus %s to LZ4..." % corpus_id
-		p = multiprocessing.Process(target=convert_to_lz4, args=[corpus_id, True, dest_data_dir])
+		print "Converting corpus %s from %s to %s..." % (corpus_id, src_data_format, dest_data_format)
+		p = multiprocessing.Process(target=convert_to_lz4, args=[corpus_id, True, dest_data_dir, DATA_DIR, src_data_format, dest_data_format])
 		p.start()
 		p.join()
 
