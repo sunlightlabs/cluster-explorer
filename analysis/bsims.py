@@ -88,6 +88,8 @@ def get_similarity_data_type(corpus_id, root=DATA_DIR):
 	if data_type is None:
 		data_type = TYPE_PREFERENCE[0]
 
+	return data_type
+
 def get_similarity_writer(corpus_id, root=DATA_DIR, force_data_type=None):
 	data_type = force_data_type if force_data_type else get_similarity_data_type(corpus_id, root)
 	print "writer using %s" % data_type
