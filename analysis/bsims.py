@@ -24,9 +24,9 @@ SIMILARITY_IO_BUFFER_SIZE = 100 * 1024 * 1024 # 100MB, enough so vast majority o
 
 class SimilarityWriter(object):
 	def __init__(self, corpus_id, root=DATA_DIR):
-		dir = os.path.join(root, str(corpus_id))
-		if not os.path.isdir(dir):
-			os.mkdir(dir)
+		self.directory = os.path.join(root, str(corpus_id))
+		if not os.path.isdir(self.directory):
+			os.mkdir(self.directory)
 		self.buffers = [list() for _ in range(len(STORED_SIMILARITY_CUTOFFS))]
 
 		@property
@@ -63,13 +63,13 @@ class SimilarityWriter(object):
 class ZlibSimilarityWriter(SimilarityWriter):
 	def __init__(self, corpus_id, root=DATA_DIR):
 		super(ZlibSimilarityWriter, self).__init__(corpus_id, root)
-		self.writers = [BufferedCompressedWriter(open(os.path.join(dir, "%s.sims" % str(9-i)), 'a')) 
+		self.writers = [BufferedCompressedWriter(open(os.path.join(self.directory, "%s.sims" % str(9-i)), 'a')) 
 						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
 
 class LZ4SimilarityWriter(SimilarityWriter):
 	def __init__(self, corpus_id, root=DATA_DIR):
-		super(ZlibSimilarityWriter, self).__init__(corpus_id, root)
-		self.writers = [LZ4CompressedWriter(os.path.join(dir, "%s.lz4sims" % str(9-i)))
+		super(LZ4SimilarityWriter, self).__init__(corpus_id, root)
+		self.writers = [LZ4CompressedWriter(os.path.join(self.directory, "%s.lz4sims" % str(9-i)))
 						for i in range(len(STORED_SIMILARITY_CUTOFFS))]
 
 TYPE_WRITERS = {'zlib': ZlibSimilarityWriter, 'lz4': LZ4SimilarityWriter}
@@ -80,7 +80,7 @@ def get_similarity_data_type(corpus_id, root=DATA_DIR):
 
 	# if any of the data files exist, in order of preference, use those
 	if os.path.exists(dir):
-		for dtype in type_preference:
+		for dtype in TYPE_PREFERENCE:
 			if os.path.exists(os.path.join(dir, "5.%s" % TYPE_EXTENSIONS[dtype])):
 				data_type = dtype
 				break

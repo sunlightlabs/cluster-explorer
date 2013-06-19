@@ -11,7 +11,7 @@ from utils import execute_file, binary_search
 from corpus import Corpus
 from partition import Partition
 from utils import BufferedCompressedWriter, BufferedCompressedReader
-from bsims import SimilarityWriter, SimilarityReader
+from bsims import get_similarity_writer, get_similarity_reader
 
 
 class DBTestCase(TestCase):
@@ -280,50 +280,6 @@ class TestDocumentIngester(DBTestCase):
         """, [self.corpus.id, min(x, y), max(x, y)])
         
         return c.fetchone()[0]
-        
-class TestAnalysis(DBTestCase):
-    
-    def test_basic(self):
-        i = DocumentIngester(self.corpus)
-        i.ingest([
-            "This document has three sentences. One of which matches. Two of which do not.",
-            "This document has only two sentences. One of which matches.",
-            "This document has only two sentences. Only one of which is new.",
-            "This document matches nothing else.",
-            "Only one of which is new.",
-            "There will be two of these.",
-            "There will be two of these."
-        ])
-
-        self.assertEqual([], self.corpus.similar_docs(3))
-        self.assertEqual([], self.corpus.similar_docs(0))
-        self.assertEqual([(1, 0.25)], self.corpus.similar_docs(0, min_similarity=0.2))
-        self.assertEqual([(5, 1.0)], self.corpus.similar_docs(6))
-        self.assertEqual([(6, 1.0)], self.corpus.similar_docs(5))
-        self.assertEqual([(4, 0.5)], self.corpus.similar_docs(2))
-        sim_2 = self.corpus.similar_docs(2, min_similarity=0.2)
-        self.assertEqual(2, len(sim_2))
-        self.assertEqual((4, 0.5), sim_2[0])
-        self.assertEqual(1, sim_2[1][0])
-        self.assertAlmostEqual(1.0/3, sim_2[1][1], places=5)
-
-    def test_phrase_overlap(self):
-        i = DocumentIngester(self.corpus)
-        i.ingest([
-            "This document has three sentences. One of which matches. Two of which do not.",
-            "This document has only two sentences. One of which matches.",
-            "This document has only two sentences. Only one of which is new.",
-            "This document matches nothing else.",
-            "Only one of which is new.",
-            "There will be two of these.",
-            "There will be two of these."
-        ])
-
-        overlap = self.corpus.phrase_overlap(2, [id for (id, _) in self.corpus.similar_docs(2, 0.2)])
-        self.assertEqual({3: {'count': 1L, 'indexes': '{"(0,37)"}'}, 4: {'count': 1L, 'indexes': '{"(38,63)"}'}}, overlap)
-        
-        overlap = self.corpus.phrase_overlap(2, [id for (id, _) in self.corpus.similar_docs(2, 0.4)])
-        self.assertEqual({4: {'count': 1L, 'indexes': '{"(38,63)"}'}}, overlap)
 
 class TestRealData(DBTestCase):
 
@@ -365,20 +321,6 @@ class TestRealData(DBTestCase):
         
         self.cursor.execute("select metadata -> 'title' from documents")
         self.assertEqual('a "quoted" string', self.cursor.fetchone()[0])
-
-    def test_bad_encoding(self):
-        doc = 'This has a bad \xe2 character.'
-        metadata = {u'title': "Even the title is \xe2 bad."}
-        
-        i = DocumentIngester(self.corpus)
-        i.ingest([{'text': doc, 'metadata': metadata}])
-        
-        self.cursor.execute("select metadata -> 'title' from documents")
-        self.assertEqual(u'Even the title is \ufffdad.', self.cursor.fetchone()[0])
-        
-        self.cursor.execute("select text from documents")
-        self.assertEqual(u'This has a bad \ufffdharacter.', self.cursor.fetchone()[0])
-
 
 class TestBinarySearch(TestCase):
     
@@ -460,9 +402,11 @@ class TestBufferedCompressedIO(TestCase):
             os.remove(testfile)
 
     def test_sim_io(self):
-        shutil.rmtree(os.path.join('.', '0'))
+        cdir = os.path.join('.', '0')
+        if os.path.exists(cdir):
+            shutil.rmtree(cdir)
 
-        with SimilarityWriter(0, root='.') as w:
+        with get_similarity_writer(0, root='.') as w:
             w.write(1,2,1.0)
             w.write(1,3,0.95)
             w.write(1,4,0.9)
@@ -472,7 +416,7 @@ class TestBufferedCompressedIO(TestCase):
             w.write(3,8,0.5)
             w.write(3,9,0.4)
 
-        r = SimilarityReader(0, root='.')
+        r = get_similarity_reader(0, root='.')
         values = list(r)
         self.assertEqual([(1,2,.9 + .05),
                           (1,3,.9 + .05),
