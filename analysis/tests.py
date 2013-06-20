@@ -213,61 +213,6 @@ class TestDocumentIngester(DBTestCase):
         
         self.assertEqual(dict([(0, [0, 1, 2]), (1, [1, 3]), (2, [3, 4])]), self.corpus.all_docs())
 
-    def test_similarities(self):
-        
-        self.test_ingester()
-        
-        i = DocumentIngester(self.corpus)
-        i.compute_similarities([0, 1, 2])
-        
-        c = connection.cursor()
-        
-        c.execute("select count(*) from similarities")
-        self.assertEqual(2, c.fetchone()[0])
-        
-        self.assertEqual(0.25, self.get_sim(c, 0, 1))
-        self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
-
-    def test_similarities_cutoff(self):
-
-        self.test_ingester()
-
-        i = DocumentIngester(self.corpus)
-        i.compute_similarities([0, 1, 2], min_similarity=0.0)
-
-        c = connection.cursor()
-
-        c.execute("select count(*) from similarities")
-        self.assertEqual(3, c.fetchone()[0])
-
-        self.assertEqual(0.25, self.get_sim(c, 0, 1))
-        self.assertEqual(0, self.get_sim(c, 0, 2))
-        self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
-        
-    def test_complete(self):
-        i = DocumentIngester(self.corpus)
-        i.ingest([
-            'This document has three sentences. One of which matches. Two of which do not.',
-            'This document has only two sentences. One of which matches.',
-            'This document has only two sentences. Only one of which is new.'
-        ])
-
-        c = connection.cursor()
-    
-        c.execute("select count(*) from similarities")
-        self.assertEqual(2, c.fetchone()[0])        
-        self.assertEqual(0.25, self.get_sim(c, 0, 1))
-        self.assertAlmostEqual(1.0/3, self.get_sim(c, 1, 2), places=5)
-
-        i.ingest([
-            "This document matches nothing else.",
-            "Only one of which is new."
-        ])
- 
-        c.execute("select count(*) from similarities")
-        self.assertEqual(3, c.fetchone()[0])        
-        self.assertAlmostEqual(0.5, self.get_sim(c, 2, 4))
-
 
     def get_sim(self, c, x, y):
         c.execute("""

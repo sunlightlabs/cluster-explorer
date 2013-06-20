@@ -87,7 +87,7 @@ class Corpus(object):
         self.cursor.execute("select count(*) from documents where corpus_id=%s", [self.id])
         return self.cursor.fetchone()[0]
 
-    ### methods used by DocumentIngester ###    
+    ### methods used by DocumentIngester ###
         
     def max_doc_id(self):
         self.cursor.execute("select max(document_id) from documents where corpus_id = %s", [self.id])
