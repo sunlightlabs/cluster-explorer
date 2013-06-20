@@ -4,26 +4,16 @@ import os
 from django.test import TestCase
 from django.db import connection
 
-from ingestion import *
-from phrases import PhraseSequencer
-from parser import _sentence_boundaries, _ngram_boundaries, sentence_parse
-from utils import execute_file, binary_search
-from corpus import Corpus
-from partition import Partition
-from utils import BufferedCompressedWriter, BufferedCompressedReader
-from bsims import get_similarity_writer, get_similarity_reader
+from .base import DBTestCase
 
-
-class DBTestCase(TestCase):
-    
-    def setUp(self):
-        self.cursor = connection.cursor()
-        execute_file(self.cursor, os.path.join(os.path.dirname(__file__), 'tables.sql'))
-        
-        self.corpus = Corpus()
-        
-    def tearDown(self):
-        execute_file(self.cursor, os.path.join(os.path.dirname(__file__), 'drop_tables.sql'))
+from analysis.ingestion import *
+from analysis.phrases import PhraseSequencer
+from analysis.parser import _sentence_boundaries, _ngram_boundaries, sentence_parse
+from analysis.utils import execute_file, binary_search
+from analysis.corpus import Corpus
+from analysis.partition import Partition
+from analysis.utils import BufferedCompressedWriter, BufferedCompressedReader
+from analysis.bsims import get_similarity_writer, get_similarity_reader
 
 class TestPartition(TestCase):
     # note: order of returned sets is really undefined.

@@ -302,3 +302,103 @@ def wirth_n_largest(a, n):
     nth = selected[-n:].min()
     maxes = [idx for idx in xrange(a.size) if a[idx] >= nth]
     return numpy.array(sorted(maxes, key=lambda x: a[x], reverse=True)[:n])
+
+# some stuff for manipulating test snapshots of corpora
+DUMP_FORMATS = (
+    ('corpora', 'binary'),
+    ('documents', 'binary'),
+    ('phrases', 'binary'),
+    ('phrase_occurrences', 'csv'),
+)
+
+def make_snapshot(docket_id, outfile, sim_root=None):
+    import bsims
+    from corpus import Corpus, get_corpora_by_metadata, get_dual_corpora_by_metadata
+
+    import zipfile, cStringIO, os, json
+    from django.db import connection
+
+    if not sim_root:
+        sim_root = bsims.DATA_DIR
+
+    c = connection.cursor()
+    c.execute("select corpus_id, metadata->'parser' from corpora where metadata -> %s = %s", ["docket_id", docket_id])
+    corpora = c.fetchall()
+    
+    if not corpora:
+        raise CommandError("No corpus found for %s" % docket_id)
+        
+    ngram_corpora = [id for (id, parser) in corpora if parser=='4-gram']
+    sentence_corpora = [id for (id, parser) in corpora if parser=='sentence']
+
+    # open the export file
+    zf = zipfile.ZipFile(outfile, 'w')
+
+    # export the database stuff for each one
+    buf = cStringIO.StringIO()
+    for corpus_id in ngram_corpora + sentence_corpora:
+        for table, format in DUMP_FORMATS:
+            buf.truncate(0)
+            c.copy_expert("copy (select * from %s where corpus_id = %s) to stdout with (format '%s')" % (table, corpus_id, format), buf)
+            zf.writestr(os.path.join("db", str(corpus_id), "%s_%s.dump" % (table, format)), buf.getvalue(), zipfile.ZIP_DEFLATED)
+    del buf
+
+    # copy in the cluster files (force LZ4 for now)
+    for corpus_id in ngram_corpora:
+        reader = bsims.get_similarity_reader(corpus_id, force_data_type="lz4", root=sim_root)
+        for threshold, lz4files in reader.files_by_cutoff():
+            for lz4file in lz4files:
+                zf.write(lz4file, os.path.join("sims", str(corpus_id), *(lz4file.split('/')[-2:])), zipfile.ZIP_STORED)
+
+    # stash a list of the corpora so we can find them later
+    zf.writestr("corpora", json.dumps({
+        'ngram_corpora': ngram_corpora,
+        'sentence_corpora': sentence_corpora
+    }).encode('utf8'), zipfile.ZIP_DEFLATED)
+
+    zf.close()
+
+def load_snapshot(infile, sim_root=None):
+    import bsims
+    from corpus import Corpus, get_corpora_by_metadata, get_dual_corpora_by_metadata
+
+    import zipfile, cStringIO, os, json
+    from django.db import connection
+
+    if not sim_root:
+        sim_root = bsims.DATA_DIR
+
+    c = connection.cursor()
+
+    # open the import file
+    zf = zipfile.ZipFile(infile, 'r')
+
+    # retrieve the list of corpora
+    corpora_info = json.load(zf.open("corpora"))
+    ngram_corpora, sentence_corpora = corpora_info['ngram_corpora'], corpora_info['sentence_corpora']
+
+    # load database stuff
+    for corpus_id in ngram_corpora + sentence_corpora:
+        for table, format in DUMP_FORMATS:
+            print "Importing table %s for corpus %s..." % (table, corpus_id)
+            c.copy_expert("copy %s from stdin with (format '%s')" % (table, format), zf.open(os.path.join("db", str(corpus_id), "%s_%s.dump" % (table, format))))
+
+    # pull out the cluster files
+    for corpus_id in ngram_corpora:
+        sim_path = os.path.join("sims", str(corpus_id))
+        for sim_file in (filename for filename in zf.namelist() if filename.startswith(sim_path)):
+            # figure out where it's supposed to go
+            new_filename = os.path.join(sim_root, sim_file.split('/', 1)[-1])
+
+            # make sure all the subdirectories exist
+            new_filename_parts = new_filename.split("/")
+            for directory in ["/".join(new_filename_parts[0:x]) for x in xrange(1, len(new_filename_parts))]:
+                if not os.path.exists(directory):
+                    os.mkdir(directory)
+
+            print 'writing to', new_filename
+            new_file = open(new_filename, 'w')
+            new_file.write(zf.open(sim_file).read())
+            new_file.close()
+
+    return corpora_info
