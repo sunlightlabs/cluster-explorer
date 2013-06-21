@@ -370,7 +370,7 @@ class Corpus(object):
         return self._add_representative_phrases(h, limit=5)
 
     @profile
-    def _compute_hierarchy(self, compute_summaries):
+    def _compute_hierarchy(self, compute_summaries, force_sim_format=None):
         """Return the hierarchy of clusters, in the format d3 expects.
                 
         See https://github.com/mbostock/d3/wiki/Partition-Layout for result format.
@@ -386,7 +386,7 @@ class Corpus(object):
         pruning_size = max(2, len(all_docs) / 100);
         hierarchy = {}
 
-        similarity_reader = bsims.get_similarity_reader(self.id)
+        similarity_reader = bsims.get_similarity_reader(self.id, force_data_type=force_sim_format)
         # short-circuit the python-side computation if everything lines up right
         if isinstance(similarity_reader, bsims.LZ4SimilarityReader) and hasattr(partition, "merge_lz4"):
             # we can use the C stuff

@@ -181,7 +181,7 @@ def remove_documents(corpus_id, doc_ids):
 	shutil.move(os.path.join(temp_dir, str(corpus_id)), existing_dir)
 	shutil.rmtree(temp_dir)
 
-def convert_data_format(corpus_id, preserve_src=True, dest_data_dir=DATA_DIR, src_data_format="zlib", dest_data_format="lz4"):
+def convert_data_format(corpus_id, preserve_src=True, src_data_dir=DATA_DIR, dest_data_dir=DATA_DIR, src_data_format="zlib", dest_data_format="lz4"):
 	"""Convert a zlib corpus to an LZ4 corpus."""
 	existing_dir = os.path.join(DATA_DIR, str(corpus_id))
 	if not os.path.isdir(existing_dir):
