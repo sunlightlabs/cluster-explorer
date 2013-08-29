@@ -155,6 +155,16 @@ def delete_analysis(docket):
             print "Attempted deletion of %s. Docket not found." % docket.id
         Doc.objects(docket_id=docket.id).update(set__in_cluster_db=False)
 
+def process_docket(docket, options):
+    with transaction.commit_manually():
+        if options.get('repair'):
+            repair_missing_docket(docket)
+        elif options.get('delete'):
+            delete_analysis(docket)
+        elif options.get('repair_sims'):
+            repair_missing_sims(docket)
+        else:
+            ingest_docket(docket)
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -163,9 +173,9 @@ class Command(BaseCommand):
         make_option('-r', "--repair", dest='repair', action="store_true"),
         make_option("--delete", dest='delete', action='store_true'),
         make_option("--repair_sims", dest='repair_sims', action='store_true'),
+        make_option('-F', "--fork", dest="fork", action="store_true")
     )
 
-    @transaction.commit_manually
     def handle(self, **options):        
         if options.get('docket'):
             dockets = Docket.objects(id=options['docket'])
@@ -174,21 +184,30 @@ class Command(BaseCommand):
         else:
         	dockets = Docket.objects()
 
-        print "Beginning loading %s dockets at %s..." % (len(dockets), datetime.now())
-
+        print "Enumerating dockets..."
+        docket_list = list(dockets.only('id', 'agency'))
+        docket_count = len(docket_list)
         counter = 0
-        for docket in list(dockets):
-            counter += 1
-            print "Docket #%s" % counter
-            
-            if options.get('repair'):
-                repair_missing_docket(docket)
-            elif options.get('delete'):
-                delete_analysis(docket)
-            elif options.get('repair_sims'):
-                repair_missing_sims(docket)
-            else:
-                ingest_docket(docket)
+
+        print "Beginning loading %s dockets at %s..." % (docket_count, datetime.now())
+
+        if options['fork']:
+            print "Using forking strategy..."
+            import multiprocessing
+            for docket in docket_list:
+                counter += 1
+                print "Docket #%s / %s" % (counter, docket_count)
+
+                p = multiprocessing.Process(target=process_docket, args=[docket, options])
+                p.start()
+                p.join()
+        else:
+            print "Using single-process strategy..."
+            for docket in docket_list:
+                counter += 1
+                print "Docket #%s / %s" % (counter, docket_count)
+
+                process_docket(docket, options)
 
         print "Done."
 
