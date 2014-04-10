@@ -64,11 +64,11 @@ def ingest_docket(docket):
 
     print "Marking MongoDB documents as analyzed at %s..." % datetime.now()
     update_count = Doc.objects(id__in=[d['metadata']['document_id'] for d in insertions]) \
-                      .update(safe_update=True, set__in_cluster_db=True)
+                      .update(set__in_cluster_db=True)
     if update_count != len(insertions):
         print "ERROR: %s documents inserted into Postgres, but only %s documents marked as analyzed in MongoDB." % (len(insertions), update_count)
     update_count = Doc.objects(id__in=deletions) \
-                      .update(safe_update=True, set__in_cluster_db=False)
+                      .update(set__in_cluster_db=False)
     if update_count != len(deletions):
         print "ERROR: %s documents deleted in Postgres, but only %s documents marked as deleted in MongoDB." % (len(deletions), update_count)
 
@@ -124,7 +124,7 @@ def repair_missing_docket(docket):
     
     if len(corpora) == 0:
         # neither parse exists, mark as unclustered in Mongo
-        update_count = Doc.objects(docket_id=docket.id, in_cluster_db=True).update(safe_update=True, set__in_cluster_db=False)
+        update_count = Doc.objects(docket_id=docket.id, in_cluster_db=True).update(set__in_cluster_db=False)
         print "Docket %s missing in Postgres. Marked %s documents with in_cluster_db=False." % (docket.id, update_count)
         ingest_docket(docket)
     elif len(corpora) == 1 or len(corpora) > 2:
