@@ -41,7 +41,7 @@ def print_stats(docket_id):
 
 
     for corpus in get_corpora_by_metadata('docket_id', docket_id):
-            print "Corpus %s (%s) has %s documents." % (corpus.id, corpus.metadata, corpus.num_docs())
+        print "Corpus %s (%s) has %s documents." % (corpus.id, corpus.metadata, corpus.num_docs())
 
 
 def ingest_docket(docket_id):
@@ -176,10 +176,17 @@ class Command(BaseCommand):
         make_option('-r', "--repair", dest='repair', action="store_true"),
         make_option("--delete", dest='delete', action='store_true'),
         make_option("--repair_sims", dest='repair_sims', action='store_true'),
-        make_option('-F', "--fork", dest="fork", action="store_true")
+        make_option('-F', "--fork", dest="fork", action="store_true"),
+        make_option("--parsable", dest="parsable", action="store_true")
     )
 
-    def handle(self, **options):        
+    def handle(self, **options):
+        if options['parsable']:
+            # disable standard output by monkey-patching sys.stdout
+            dev_null = open('/dev/null', 'w')
+            real_stdout = sys.stdout
+            sys.stdout = dev_null
+
         doc_kwargs = {'type': 'public_submission'}
         if options.get('docket'):
             doc_kwargs['docket_id'] = options['docket']
@@ -213,4 +220,9 @@ class Command(BaseCommand):
 
         print "Done."
 
+        if options['parsable']:
+            # turn stdout back on so we can print output
+            sys.stdout = real_stdout
 
+            if out:
+                print json.dumps({'dockets': docket_count})
