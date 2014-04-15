@@ -12,6 +12,8 @@ from analysis import bsims
 from regs_models import Docket, Doc
 from mongoengine.queryset import Q
 
+import sys, json
+
 def doc_text(doc):
     return "\n".join([doc.canonical_view().as_text()] + [a.canonical_view().as_text() for a in doc.attachments])[:10000]
 
@@ -224,5 +226,4 @@ class Command(BaseCommand):
             # turn stdout back on so we can print output
             sys.stdout = real_stdout
 
-            if out:
-                print json.dumps({'dockets': docket_count})
+            print json.dumps({'dockets': docket_count})
